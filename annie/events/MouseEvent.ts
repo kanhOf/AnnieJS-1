@@ -130,6 +130,12 @@ namespace annie {
          */
         public identifier:any=0;
         /**
+         * 当前时间戳
+         * @property timeStamp
+         * @type {number}
+         */
+        public timeStamp:number=0;
+        /**
          * @method MouseEvent
          * @public
          * @since 1.0.0
@@ -147,7 +153,7 @@ namespace annie {
          * @return {void}
          */
         public updateAfterEvent():void{
-            this.target.stage.updateMatrix();
+            this.target.stage._onUpdateMatrixAndAlpha();
         }
         public destroy():void {
             //清除相应的数据引用

@@ -55,7 +55,7 @@ namespace annie {
                         s.stage.rootDiv.insertBefore(s.htmlElement, s.stage.rootDiv.childNodes[0]);
                     } else {
                         if (s.htmlElement && s.visible) {
-                            style.display = "inline";
+                            style.display = "inline-block";
                         }
                     }
                 }
@@ -72,29 +72,22 @@ namespace annie {
         public init(htmlElement: any): void {
             let s = this;
             let she: any;
-            if (typeof(htmlElement) == "string") {
+            if (typeof (htmlElement) == "string") {
                 she = document.getElementById(htmlElement);
             } else if (htmlElement._instanceType == "annie.Video") {
                 she = htmlElement.media;
             } else {
                 she = htmlElement;
             }
+            if (s.htmlElement) {
+                s.removeHtmlElement();
+            }
             let style = she.style;
             style.position = "absolute";
             style.display = "none";
             style.transformOrigin = style.WebkitTransformOrigin = "0 0 0";
-            let ws = s.getStyle(she, "width");
-            let hs = s.getStyle(she, "height");
-            let w = 0, h = 0;
-            if (ws.indexOf("px")) {
-                w = parseInt(ws);
-            }
-            if (hs.indexOf("px")) {
-                h = parseInt(hs);
-            }
-            s._bounds.width = w;
-            s._bounds.height = h;
             s.htmlElement = she;
+            s._onUpdateTexture();
         }
 
         private getStyle(elem: HTMLElement, cssName: any): any {
@@ -112,9 +105,24 @@ namespace annie {
             }
             return null;
         }
-
-        public _onEnterFrameEvent(): void {
-            super._onEnterFrameEvent();
+        public _onUpdateTexture(): void {
+            let s: any = this;
+            let texture: any = s.htmlElement;
+            if (!texture) {
+                s._bounds.width = 0;
+                s._bounds.height = 0;
+            } else {
+                let bw = texture.offsetWidth;
+                let bh = texture.offsetHeight;
+                if (s._bounds.width != bw || s._bounds.height != bh) {
+                    s._bounds.width = bw;
+                    s._bounds.height = bh;
+                    s._updateSplitBounds();
+                }
+            }
+        }
+        public _onUpdateFrame(): void {
+            super._onUpdateFrame();
             let s: any = this;
             let o = s.htmlElement;
             if (o) {
@@ -134,38 +142,32 @@ namespace annie {
                         }
                     }
                 }
-                let show = visible ? "inline" : "none";
+                let show = visible ? "inline-block" : "none";
                 if (show != style.display) {
                     style.display = show;
                 }
             }
         }
-        public updateMatrix(): void {
+        protected _onUpdateMatrixAndAlpha(): void {
             let s = this;
             let o = s.htmlElement;
             if (!s._visible || !o) return;
-            super.updateMatrix();
-            if (s.a2x_um || s.a2x_ua || s.a2x_uf) {
+            super._onUpdateMatrixAndAlpha();
+            if (s.a2x_um || s.a2x_ua) {
                 let style = o.style;
                 if (s.a2x_um) {
-                    let mtx = s.cMatrix;
+                    let mtx = s._cMatrix;
                     let d = annie.devicePixelRatio;
                     style.transform = style.webkitTransform = "matrix(" + (mtx.a / d).toFixed(4) + "," + (mtx.b / d).toFixed(4) + "," + (mtx.c / d).toFixed(4) + "," + (mtx.d / d).toFixed(4) + "," + (mtx.tx / d).toFixed(4) + "," + (mtx.ty / d).toFixed(4) + ")";
                 }
                 if (s.a2x_ua) {
-                    style.opacity = s.cAlpha;
+                    style.opacity = s._cAlpha;
                 }
             }
-            s.a2x_uf = false;
             s.a2x_um = false;
             s.a2x_ua = false;
         }
-        public render(renderObj: IRender) {
-
-        }
-
-        public destroy(): void {
-            //清除相应的数据引用
+        private removeHtmlElement(): void {
             let s = this;
             let elem = s.htmlElement;
             if (elem) {
@@ -176,7 +178,11 @@ namespace annie {
                 s._isAdded = false;
                 s.htmlElement = null;
             }
+        }
+        public destroy(): void {
             super.destroy();
+            //清除相应的数据引用
+            this.removeHtmlElement();
         }
     }
 }

@@ -7,6 +7,7 @@
     AnnieJS 支持ts和js两种开发语言环境，使用你熟悉的语言开发事半功倍。
     AnnieJS 最大的优势就是短小精悍。全部核心代码压缩后不到70k，该有的功能都有了。
     AnnieJS 需要结合Adobe 及 Annie2x工具使用才能发挥它最大的优势。
+
 # 相比Flash自带的CreateJs有什么区别和优势
     不得不承认CreateJs非常的优秀，但是它当初不是以移动优先的原则设计的，大量的逻辑和判断代码针对移动端没有任何意义。
     CreateJs鼠标穿透非常让人头疼，上层的显示对象无法阻断事件会一直往下冒泡，非常讨厌。
@@ -61,6 +62,59 @@
 # 如何更新引擎及工具
     如果官网有新版本，直接下载通过安装器覆盖安装就行
 # AnnieJS 版本更新列表
+## AnnieJS 3.2.2 版本
+    修复截图时多遮罩显示异常的bug
+    修复annie.Tween和annie.Timer与stage帧率不同步的bug
+    修复鼠标事件重复的bug
+## AnnieJS 3.2.1 版本
+    修复MCScroller有时白屏的bug
+    修复MovieClip有滤镜或者色彩或blender变化时，播放动画不更新的bug
+    修复在有滤镜情况下添加或者删除子对象，内容不更新的bug
+    修复微信开发工具下无法点击的bug
+    修复Button在时间轴上设置Clicked=true按钮状态异常的bug
+    修复IPad下手指滑动无响应的bug
+    修复超大尺寸下点击事件报错的bug
+    修复刮刮卡组件重置无效的bug
+    修复时间轴上如果有对象使用滤镜后，如果对象前一帧有滤镜而紧接着的后一帧设置无滤镜则滤镜不会删除的bug.
+    修复影片剪辑作为遮罩时，遮罩缺失的bug
+    增加大图是否自动分割渲染的开关.annie.isCutDraw属性。默认为false;
+## AnnieJS 3.2.0 版本
+    大量底层优化
+    增加位图缓存功能
+## AnnieJS 3.1.6 版本
+    优化MovieClip类，现在gotoAndStop,gotoAndPlay,nexrFrame,prevFrame等方法运行后都将时时更新帧数据，不再需要等待渲染更新流程后才更新
+    优化Bitmap类的大图自动切片渲染功能，更合理
+    修复设置MovieClip元件中child的x,y,scale,rotation,alpha属性在帧数有小数的时候无效的bug
+## AnnieJS 3.1.5 版本
+    增加控制时间轴速度属性，可以加快或减慢时间轴动画
+    重写annieUI.Scroller类，更流畅更强大
+    重写annieUI.ScrollPage类,使用更简单
+    重写annieUI.ScrollList类,使用更简单
+    新增annieUI.MCScroller类,专门用来控制时间轴动画的滑动播放
+    修复打包后文件如果很大(大概在30M以上)在ios13无法顺利加载完成的bug
+    修复遮罩后,背遮罩外的区域还可以接受鼠标事件的bug
+    修复多重嵌套遮罩后以图片为遮罩的效果无效的bug
+    修复对未添加到舞台的对象进行截图时无法截图多帧动画元素的bug
+    修复annie.Input输入文本在ios和android位置表现差异的bug
+    修复在鼠标事件里销毁对象时特殊情况下会发生错误的bug
+    优化annie.FloatDisplay,多次调用init()方法重复使用时会从dom中删除上次引用的htmlElement元素
+    修复annie.Bitmap类初始化时传入的Image对象未加载完成会报错的bug
+    修复隐藏对象舞台发生旋转后，隐藏的对象未跟着旋转的bug
+    修复动画对象作为遮罩，遮罩动画不起作用的bug
+    修复多指滑动屏幕导致鼠标事件错乱的bug
+    优化图片资源切片功能，当图片资源的宽或者高超过800但又没有在Flash库中对图片资源做切片设置的话则AnnieJS会自动对图片资源做智能切片。
+## AnnieJS 3.1.4 版本
+    修复无法获取annie.FloatDisplay鼠标事件的bug
+    修复初始化后马上获取显示对像宽高为0的bug
+    增加显示对象的blendMode属性，以支持混合模式
+## AnnieJS 3.1.3 版本
+    修复annie.MovieClip的visible=false后,再次为true后执行gotoAndPlay/gotoAndStop方法后，渲染却还停留在上一帧的bug
+## AnnieJS 3.1.2 版本
+    修复annie.MovieClip初次添加到显示列表中偶尔会掉帧导致闪屏的bug
+    调整annie.InputText的padding，margin的默认样式，尽量让android和ios上表现一致
+## AnnieJS 3.1.1 版本
+    修复文本为空时失效的bug
+    修复图形动画不会停止的bug
 ## AnnieJS 3.1.0 版本
     增加annie.Sprite.hitArea属性，设置此属性将直接设置容器鼠标事件接受的区域范围，提升效率。
     增加annie.MovieClip的gotoAndStop,gotoAndPlay方法功能，现在帧数可以是带小数的，以此来加载动画缓功能，或者播放快慢调整
@@ -276,6 +330,24 @@
     支持urlLoader 加载类
     支持flash2x 管理类
 # Flash2x 版本更新列表
+## Annie2x 4.2.6
+    AnnieJS引擎升级到3.2.0版本
+    支持导出ES6
+## Annie2x 4.2.5
+    AnnieJS引擎升级到3.1.5版本
+    将gulp升级到4.x,支持nodeJS 10.x以上版本
+    支持javascript es6及更高版本
+    支持导出blendMode属性
+## Annie2x 4.2.4
+    AnnieJS引擎升级到3.1.3版本
+    修复ts版打包发布出错的bug
+    修复ts初次发布没有生成main.ts文件的bug
+## Annie2x 4.2.3
+    AnnieJS引擎升级到3.1.2版本
+    修复导出输入文本命名后，H5会报错的bug
+## Annie2x 4.2.2
+    AnnieJS引擎升级到3.1.1版本
+    修复TS导出后InputText类名错误的bug
 ## Annie2x 4.2.1
     AnnieJS引擎升级到3.1.0版本
     全新的安装包模式，方便版本升级切换及管理

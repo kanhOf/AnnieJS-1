@@ -169,7 +169,7 @@ namespace annie {
         if (_progressCallback) {
             let ww: any = window;
             let total = e.data.totalBytes;
-            if (annie.osType == "android" && ww.swfBytes && ww.swfBytes[_loadSceneNames[_loadIndex]]) {
+            if (ww.swfBytes && ww.swfBytes[_loadSceneNames[_loadIndex]]) {
                 total = ww.swfBytes[_loadSceneNames[_loadIndex]];
             }
             _progressCallback((_loadPer + e.data.loadedBytes / total * _loadSinglePer) * 100 >> 0);
@@ -178,6 +178,7 @@ namespace annie {
 
     //解析加载后的json资源数据
     function _parseContent(loadContent: any) {
+
         //在加载完成之后解析并调整json数据文件，_a2x_con应该是con.json文件里最后一个被加载的，这个一定在fla生成json文件时注意
         //主要工作就是遍历时间轴并调整成方便js读取的方式
         let mc: any;
@@ -225,8 +226,8 @@ namespace annie {
                                         if (frameCon[j].at != -1) {
                                             //如果不为空，则更新元素
                                             for (let m in lastFrameCon[j]) {
-                                                //这个地方一定要用undefined。因为有些元素可能为0.
-                                                if (frameCon[j][m] == void 0) {
+                                                //这个地方一定要用undefined。因为有些元素可能为0.当然不是所有的元素都要补，比如滤镜，为空就不需要补
+                                                if (frameCon[j][m] == void 0&&m!="fi") {
                                                     frameCon[j][m] = lastFrameCon[j][m];
                                                 }
                                             }
@@ -280,17 +281,17 @@ namespace annie {
                     if (e.data.type == "image") {
                         //图片
                         _loadResCount++;
-                        var image = new Image();
+                        let image = new Image();
                         image.onload = mediaResourceOnload;
                         image.src = URL.createObjectURL(loadContent);
                         annie.res[scene][_currentConfig[_loadIndex][0].id] = image;
                     }
                     else if (e.data.type == "sound") {
                         //声音
-                        var audio: any = new Audio();
+                        let audio: any = new Audio();
                         _loadResCount++;
                         if (annie.osType == "ios") {
-                            var sFileReader = new FileReader();
+                            let sFileReader = new FileReader();
                             sFileReader.onload = function () {
                                 audio.src = sFileReader.result;
                                 mediaResourceOnload(null);
@@ -367,14 +368,16 @@ namespace annie {
                             annie.res[scene][JSONData[i].id] = audio;
                         } else if (JSONData[i].type == "json") {
                             if (JSONData[i].id == "_a2x_con") {
-                                fileReader.readAsText(loadContent.slice(lastIndex, currIndex));
+                                let conReader:any=new FileReader();
+                                conReader.onload=function(){
+                                    annie.res[scene]["_a2x_con"] = JSON.parse(conReader.result);
+                                    _parseContent(annie.res[scene]["_a2x_con"]);
+                                    conReader.onload=null;
+                                };
+                                conReader.readAsText(loadContent.slice(lastIndex, currIndex));
                             }
                         }
                     }
-                } else if (state == 4) {
-                    state++;
-                    annie.res[scene]["_a2x_con"] = JSON.parse(fileReader.result);
-                    _parseContent(annie.res[scene]["_a2x_con"]);
                 }
             };
         }
@@ -390,7 +393,7 @@ namespace annie {
             _loadRes();
         } else {
             res[_loadSceneNames[_loadIndex]]._f2x_had_loaded_scene = true;
-            var info: any = {};
+            let info: any = {};
             info.sceneName = _loadSceneNames[_loadIndex];
             _loadIndex++;
             info.sceneId = _loadIndex;
@@ -466,20 +469,22 @@ namespace annie {
      * @return {any}
      */
     export function getResource(sceneName: string, resName: string): any {
-        let s = res;
-        let obj = s[sceneName][resName];
-        if (obj != void 0) {
-            //分析是不是分割图
-            let re = /([1-9]\d*)x([1-9]\d*)$/;
-            let resultMatchList = re.exec(resName);
-            if (resultMatchList != void 0 && resultMatchList.length == 3) {
-                obj.boundsRowAndCol = [parseInt(resultMatchList[1]), parseInt(resultMatchList[1])];
-            }
-            return s[sceneName][resName];
-        }
-        return null;
+        return res[sceneName][resName];
     }
-
+    /**
+     * 新建一个已经加载到场景中的类生成的对象
+     * @method annie.getDisplay
+     * @public
+     * @static
+     * @since 3.2.1
+     * @param {string} sceneName
+     * @param {string} className
+     * @return {any}
+     */
+    export function getDisplay(sceneName:string,className:string):any {
+        let Root: any = window;
+        return new Root[sceneName][className]();
+    }
     // 通过已经加载场景中的图片资源创建Bitmap对象实例,此方法一般给Annie2x工具自动调用
     function b(sceneName: string, resName: string): Bitmap {
         return new annie.Bitmap(res[sceneName][resName]);
@@ -498,17 +503,18 @@ namespace annie {
             if (info.al == void 0) {
                 info.al = 1;
             }
+            if(info.m==void 0){
+                info.m=0;
+            }
+            target.blendMode=info.m;
             if(isMc){
-                if (lastInfo.tr!= info.tr){
-                    let isUmChange:boolean=false;
+                    let isUmChange:boolean=target.a2x_um;
                     if(!target._changeTransformInfo[0]&&target._x!=info.tr[0]){
                         target._x=info.tr[0];
-                        target._lastX=target._x+target._offsetX;
                         isUmChange=true;
                     }
                     if(!target._changeTransformInfo[1]&&target._y!=info.tr[1]){
                         target._y=info.tr[1];
-                        target._lastY=target._y+target._offsetY;
                         isUmChange=true;
                     }
                     if(!target._changeTransformInfo[2]&&target._scaleX!=info.tr[2]){
@@ -522,15 +528,16 @@ namespace annie {
                     if(!target._changeTransformInfo[4]){
                         if(target._skewX!=info.tr[4]){
                             target._skewX=info.tr[4];
+                            target._rotation=0;
                             isUmChange=true;
                         }
                         if(target._skewY!=info.tr[5]){
                             target._skewY=info.tr[5];
+                            target._rotation=0;
                             isUmChange=true;
                         }
                     }
                     target.a2x_um=isUmChange;
-                }
                 if(!target._changeTransformInfo[5]&&target._alpha!=info.al) {
                     target._alpha = info.al;
                     target.a2x_ua = true;
@@ -538,12 +545,12 @@ namespace annie {
             }else{
                 if(lastInfo.tr != info.tr){
                     [target._x, target._y, target._scaleX, target._scaleY, target._skewX, target._skewY] = info.tr;
-                    target._lastX=target._x+target._offsetX;
-                    target._lastY=target._y+target._offsetY;
                     target.a2x_um=true;
                 }
-                target._alpha = info.al;
-                target.a2x_ua=true;
+                if(target._alpha!=info.al) {
+                    target._alpha = info.al;
+                    target.a2x_ua = true;
+                }
             }
             if (info.w != undefined) {
                 target.textWidth = info.w;
@@ -557,8 +564,9 @@ namespace annie {
                         target.initButton();
                     }
                 }
-                target._mode = info.t;
+                target._a2x_mode = info.t;
             }
+
             ///////////////////////////////////////////
             //添加滤镜
             if (lastInfo.fi != info.fi) {
@@ -591,7 +599,7 @@ namespace annie {
                                 filters[filters.length] = new ColorFilter(info.fi[i][1]);
                                 break;
                             default :
-                            //TODO 其他还示实现
+                            //其他还先未实现
                         }
                     }
                     if (filters.length > 0) {
@@ -601,6 +609,7 @@ namespace annie {
                     }
                 } else {
                     target.filters = null;
+
                 }
             }
             target._a2x_res_obj = info;

@@ -1,7 +1,7 @@
 /**
  * @class annie
  */
-namespace annie{
+namespace annie {
     /**
      * <h4><font color="red">小游戏不支持 小程序不支持</font></h4>
      * 全局eval,相比自带的eval annie.Eval始终是全局的上下文。不会因为使用的位置和环境而改变上下文。
@@ -26,6 +26,15 @@ namespace annie{
      */
     export let debug: boolean = false;
     /**
+     * @property annie.isCutDraw
+     * 是否对超大图像资源分割渲染
+     * @type {boolean}
+     * @since 3.2.1
+     * @public
+     * @default false
+     */
+    export let isCutDraw: boolean = false;
+    /**
      * annie引擎的版本号
      * @public
      * @since 1.0.1
@@ -35,9 +44,7 @@ namespace annie{
      *      //打印当前引擎的版本号
      *      console.log(annie.version);
      */
-
-    export let version:string="3.1.0";
-
+    export let version: string = "3.2.1";
     /**
      * <h4><font color="red">小游戏不支持 小程序不支持</font></h4>
      * 当前设备是否是移动端或或是pc端,移动端是ios 或者 android
@@ -52,12 +59,12 @@ namespace annie{
      */
     export let osType: string = (function () {
         let n = navigator.userAgent.toLocaleLowerCase();
-        let reg1 = /android/;
-        let reg2 = /iphone|ipod|ipad/;
-        if (reg1.test(n)) {
-            return "android";
-        } else if (reg2.test(n)){
-            return "ios"
+        let reg1 = /android|mobile/;
+        let reg2 = /iphone|ipad|ipod|ios/;
+        if (reg2.test(n)) {
+            return "ios";
+        } else if (reg1.test(n)) {
+            return "android"
         } else {
             return "pc";
         }
@@ -80,7 +87,7 @@ namespace annie{
      *      });
      *
      */
-    export let globalDispatcher:annie.EventDispatcher=new annie.EventDispatcher();
+    export let globalDispatcher: annie.EventDispatcher = new annie.EventDispatcher();
     /**
      * 设备的retina值,简单点说就是几个像素表示设备上的一个点
      * @property annie.devicePixelRatio
@@ -120,7 +127,7 @@ namespace annie{
      *      }
      *
      */
-    export let StageScaleMode: {EXACT_FIT: string,NO_BORDER: string,NO_SCALE: string,SHOW_ALL: string,FIXED_WIDTH: string,FIXED_HEIGHT: string} = {
+    export let StageScaleMode: { EXACT_FIT: string, NO_BORDER: string, NO_SCALE: string, SHOW_ALL: string, FIXED_WIDTH: string, FIXED_HEIGHT: string } = {
         EXACT_FIT: "exactFit",
         NO_BORDER: "noBorder",
         NO_SCALE: "noScale",
@@ -157,7 +164,7 @@ namespace annie{
      * @static
      * @example
      *      submitBtn.addEventListener(annie.MouseEvent.CLICK,function (e) {
-     *           annie.sendToURL("http://www.annie2x.com??key1=value&key2=value");
+     *           annie.sendToURL("http://www.annie2x.com?key1=value&key2=value");
      *      })
      */
     export function sendToURL(url: string): void {
@@ -165,6 +172,7 @@ namespace annie{
         req.open("get", url, true);
         req.send();
     }
+
     // 作为将显示对象导出成图片的render渲染器
     export let _dRender: any = null;
     /**
@@ -192,54 +200,53 @@ namespace annie{
      */
     export let toDisplayDataURL = function (obj: any, rect: Rectangle = null, typeInfo: any = null, bgColor: string = ""): string {
         if (!_dRender) {
-            _dRender = new CanvasRender(null);
+            _dRender = new OffCanvasRender();
         }
-        _dRender.rootContainer = DisplayObject["_canvas"];
-        if(!obj.stage){
-            obj.updateMatrix();
+        //一定要更新一次
+        obj._onUpdateFrame(0);
+        obj._onUpdateMatrixAndAlpha();
+        obj._onUpdateTexture();
+        let lastOffsetX = obj._offsetX;
+        let lastOffsetY = obj._offsetY;
+        if (!rect) {
+            rect = obj.getBounds();
         }
-        if(!rect){
-            obj.getTransformRect();
-        }else{
-            obj.getTransformRect(obj.matrix,rect);
-        }
-        rect =DisplayObject._transformRect;
-        let sp=obj.parent;
-        obj.parent=null;
-        obj._cp=true;
-        let ox=obj.x;
-        let oy=obj.y;
-        obj.x=ox-rect.x;
-        obj.y=oy-rect.y;
-        let w: number =rect.width;
-        let h: number =rect.height;
-        _dRender.rootContainer.width = w;
-        _dRender.rootContainer.height = h;
-        _dRender.viewPort.height = h;
-        _dRender.viewPort.width = w;
-        _dRender.rootContainer.style.width = w / devicePixelRatio + "px";
-        _dRender.rootContainer.style.height = h / devicePixelRatio + "px";
-        _dRender._ctx = _dRender.rootContainer["getContext"]('2d');
-        if (bgColor == ""){
-            _dRender._ctx.clearRect(0, 0, w, h);
-        } else {
-            _dRender._ctx.fillStyle = bgColor;
-            _dRender._ctx.fillRect(0, 0, w, h);
-        }
-        obj.updateMatrix();
-        obj.render(_dRender);
-        obj.parent = sp;
-        obj._cp=true;
-        obj.x=ox;
-        obj.y=oy;
+        obj._offsetX += rect.x;
+        obj._offsetY += rect.y;
+        let texture = document.createElement("canvas");
+        _dRender.init(texture);
+        let w: number = Math.ceil(rect.width);
+        let h: number = Math.ceil(rect.height);
+        _dRender.reSize(w, h);
+        _dRender.begin(bgColor);
+        _dRender.render(obj);
+        obj._offsetX = lastOffsetX;
+        obj._offsetY = lastOffsetY;
         if (!typeInfo) {
-            typeInfo = {type: "png"};
-        }else{
-            if(typeInfo.quality){
-                typeInfo.quality/=100;
+            typeInfo = { type: "png" };
+        } else {
+            if (typeInfo.quality) {
+                typeInfo.quality /= 100;
             }
         }
-        return _dRender.rootContainer.toDataURL("image/" + typeInfo.type, typeInfo.quality);
+        return texture.toDataURL("image/" + typeInfo.type, typeInfo.quality);
+    };
+    export let createCache = function (obj: any): void {
+        if (!_dRender) {
+            _dRender = new OffCanvasRender();
+        }
+        let rect = obj.getBounds();
+        obj._offsetX = rect.x;
+        obj._offsetY = rect.y;
+        if (!obj._texture) {
+            obj._texture = document.createElement("canvas");
+        }
+        _dRender.init(obj._texture);
+        let w: number = Math.ceil(rect.width);
+        let h: number = Math.ceil(rect.height);
+        _dRender.reSize(w, h);
+        _dRender.begin("");
+        _dRender.render(obj);
     };
     /**
      * <h4><font color="red">小游戏不支持 小程序不支持</font></h4>
@@ -251,8 +258,8 @@ namespace annie{
      * @public
      * @since 1.1.1
      */
-    export let getStagePixels=function(stage:annie.Stage,rect:annie.Rectangle):Array<number>{
-        var newPoint:Point=stage.localToGlobal(new Point(rect.x,rect.y));
-        return stage.renderObj.rootContainer.getContext("2d").getImageData(newPoint.x,newPoint.y,rect.width,rect.height);
+    export let getStagePixels = function (stage: annie.Stage, rect: annie.Rectangle): Array<number> {
+        let newPoint: Point = stage.localToGlobal(new Point(rect.x, rect.y));
+        return stage.renderObj.canvas.getContext("2d").getImageData(newPoint.x, newPoint.y, rect.width, rect.height);
     }
 }

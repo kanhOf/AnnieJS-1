@@ -61,7 +61,7 @@ namespace annie {
          * @since 1.0.0
          */
 
-//
+        //
         /**
          * @method DisplayObject
          * @since 1.0.0
@@ -76,6 +76,39 @@ namespace annie {
         protected a2x_um: boolean = false;
         protected a2x_ua: boolean = false;
         protected a2x_uf: boolean = false;
+
+        /**
+         * 是否被缓存了
+         * @property isCache
+         * @since 3.2.0
+         * @type {boolean}
+         */
+        public get isCache(): boolean {
+            return this._isCache;
+        }
+
+        public _isCache: boolean = false;
+
+        /**
+         * 是否将这个对象缓存为位图了
+         * @property cacheAsBitmap
+         * @since 3.2.0
+         * @return {boolean}
+         */
+        public get cacheAsBitmap(): boolean {
+            return this._cacheAsBitmap;
+        }
+
+        public set cacheAsBitmap(value: boolean) {
+            let s = this;
+            if (value != s._cacheAsBitmap) {
+                s._cacheAsBitmap = value;
+                s._isCache = (s._cacheAsBitmap || s._filters.length > 0 || s._blendMode != 0);
+                s.a2x_uf = true;
+            }
+        }
+
+        private _cacheAsBitmap: boolean = false;
         /**
          * 此显示对象所在的舞台对象,如果此对象没有被添加到显示对象列表中,此对象为空。
          * @property stage
@@ -97,9 +130,9 @@ namespace annie {
          */
         public parent: Sprite = null;
         //显示对象在显示列表上的最终表现出来的透明度,此透明度会继承父级的透明度依次相乘得到最终的值
-        public cAlpha: number = 1;
+        public _cAlpha: number = 1;
         //显示对象上对显示列表上的最终合成的矩阵,此矩阵会继承父级的显示属性依次相乘得到最终的值
-        public cMatrix: Matrix = new Matrix();
+        public _cMatrix: Matrix = new Matrix();
         /**
          * 是否可以接受点击事件,如果设置为false,此显示对象将无法接收到点击事件
          * @property mouseEnable
@@ -109,8 +142,6 @@ namespace annie {
          * @default false
          */
         public mouseEnable: boolean = true;
-        //显示对象上对显示列表上的最终的所有滤镜组
-        protected cFilters: any = [];
         /**
          * 每一个显示对象都可以给他命一个名字,这样我们在查找子级的时候就可以直接用this.getChildrndByName("name")获取到这个对象的引用
          * @property name
@@ -120,8 +151,6 @@ namespace annie {
          * @default ""
          */
         public name: string = "";
-        private _lastX: number = 0;
-        private _lastY: number = 0;
 
         /**
          * 显示对象位置x
@@ -139,41 +168,13 @@ namespace annie {
             let s = this;
             if (value != s._x) {
                 s._x = value;
-                s._lastX = value + s._offsetX;
                 s.a2x_um = true;
             }
-            s._changeTransformInfo[0]=true;
+            s._changeTransformInfo[0] = true;
         }
 
         private _x: number = 0;
-
-        protected get offsetX(): number {
-            return this._offsetX;
-        }
-
-        protected set offsetX(value: number) {
-            let s = this;
-            if (value != s._offsetX) {
-                s._offsetX = value;
-                s._lastX = value + s._x;
-                s.a2x_um = true;
-            }
-        }
-
         protected _offsetX: number = 0;
-
-        protected get offsetY(): number {
-            return this._offsetY;
-        }
-
-        protected set offsetY(value: number) {
-            let s = this;
-            if (value != s._offsetY) {
-                s._offsetY = value;
-                s._lastY = value + s._y;
-                s.a2x_um = true;
-            }
-        }
         protected _offsetY: number = 0;
 
         /**
@@ -192,10 +193,9 @@ namespace annie {
             let s = this;
             if (value != s._y) {
                 s._y = value;
-                s._lastY = value + s._offsetY;
                 s.a2x_um = true;
             }
-            s._changeTransformInfo[1]=true;
+            s._changeTransformInfo[1] = true;
         }
 
         private _y: number = 0;
@@ -218,7 +218,7 @@ namespace annie {
                 s._scaleX = value;
                 s.a2x_um = true;
             }
-            s._changeTransformInfo[2]=true;
+            s._changeTransformInfo[2] = true;
         }
 
         private _scaleX: number = 1;
@@ -241,7 +241,7 @@ namespace annie {
                 s._scaleY = value;
                 s.a2x_um = true;
             }
-            s._changeTransformInfo[3]=true;
+            s._changeTransformInfo[3] = true;
         }
 
         private _scaleY: number = 1;
@@ -260,12 +260,15 @@ namespace annie {
 
         public set rotation(value: number) {
             let s = this;
-            if (value != s._rotation) {
+            if (value != s._rotation || s._skewX != 0 || s._skewY != 0) {
                 s._rotation = value;
+                s._skewX = 0;
+                s._skewY = 0;
                 s.a2x_um = true;
             }
-            s._changeTransformInfo[4]=true;
+            s._changeTransformInfo[4] = true;
         }
+
         private _rotation: number = 0;
 
         /**
@@ -286,7 +289,7 @@ namespace annie {
                 s._alpha = value;
                 s.a2x_ua = true;
             }
-            s._changeTransformInfo[5]=true;
+            s._changeTransformInfo[5] = true;
         }
 
         private _alpha: number = 1;
@@ -303,13 +306,14 @@ namespace annie {
             return this._skewX;
         }
 
-        public set skewX(value: number){
+        public set skewX(value: number) {
             let s = this;
-            if (value != s._skewX) {
+            if (value != s._skewX || s._rotation != 0) {
                 s._skewX = value;
+                s._rotation = 0;
                 s.a2x_um = true;
             }
-            s._changeTransformInfo[4]=true;
+            s._changeTransformInfo[4] = true;
         }
 
         private _skewX: number = 0;
@@ -328,11 +332,12 @@ namespace annie {
 
         public set skewY(value: number) {
             let s = this;
-            if (value != s._skewY) {
+            if (value != s._skewY || s._rotation != 0) {
                 s._skewY = value;
+                s._rotation = 0;
                 s.a2x_um = true;
             }
-            s._changeTransformInfo[4]=true;
+            s._changeTransformInfo[4] = true;
         }
 
         private _skewY: number = 0;
@@ -396,24 +401,37 @@ namespace annie {
         public set visible(value: boolean) {
             let s = this;
             if (value != s._visible) {
-                if (value)
-                    s._cp = true;
+                s._cp = true;
                 s._visible = value;
             }
         }
 
         public _visible: boolean = true;
+
         /**
          * 显示对象的混合模式
-         * 支持的混合模式大概有
+         * 支持的混合模式大概有23种，具体查看annie.BlendMode
          * @property blendMode
          * @public
          * @since 1.0.0
-         * @type {string}
+         * @type {number}
          * @default 0
          */
+        public get blendMode(): number {
+            return this._blendMode;
+        }
 
-        //public blendMode: string = "normal";
+        public set blendMode(value: number) {
+            let s = this;
+            if (value != s._blendMode) {
+                s._blendMode = value;
+                s._isCache = (s._cacheAsBitmap || s._filters.length > 0 || s._blendMode != 0);
+                s.a2x_uf = true;
+            }
+        }
+
+        private _blendMode: number = 0;
+
         /**
          * 显示对象的变形矩阵
          * @property matrix
@@ -471,8 +489,22 @@ namespace annie {
         }
 
         public set filters(value: any[]) {
-            this._filters = value;
-            this.a2x_uf = true;
+            let s = this;
+            if (value instanceof Array) {
+                if (value.length != 0 || s._filters.length != 0) {
+                    s._filters.length = 0;
+                    for (let i = 0; i < value.length; i++) {
+                        s.filters[i] = value[i];
+                    }
+                    s.a2x_uf = true;
+                }
+            } else {
+                if (s._filters.length > 0) {
+                    s._filters.length = 0;
+                    s.a2x_uf = true;
+                }
+            }
+            s._isCache = (s._cacheAsBitmap || s._filters.length > 0 || s._blendMode != 0);
         }
 
         private _filters: any[] = [];
@@ -489,7 +521,7 @@ namespace annie {
          * @return {annie.Point}
          */
         public globalToLocal(point: Point, bp: Point = null): Point {
-            return this.cMatrix.invert().transformPoint(point.x, point.y, bp);
+            return this._cMatrix.invert().transformPoint(point.x, point.y, bp);
         }
 
         /**
@@ -501,18 +533,41 @@ namespace annie {
          * @return {annie.Point}
          */
         public localToGlobal(point: Point, bp: Point = null): Point {
-            return this.cMatrix.transformPoint(point.x, point.y, bp);
+            return this._cMatrix.transformPoint(point.x, point.y, bp);
         }
 
         //为了 hitTestPoint，localToGlobal，globalToLocal等方法不复新不重复生成新的点对象而节约内存
-        public static _bp: Point = new Point();
         public static _p1: Point = new Point();
         public static _p2: Point = new Point();
         public static _p3: Point = new Point();
         public static _p4: Point = new Point();
         protected _isUseToMask: number = 0;
 
-        //TODO 遮罩以外的渲染优化
+        /**
+         * annie.Sprite显示容器的接受鼠标点击的区域。一但设置，容器里所有子级将不会触发任何鼠标相关的事件。
+         * 相当于 mouseChildren=false,但在有大量子级显示对象的情况下，此方法的性能搞出mouseChildren几个数量级，建议使用。
+         * @property hitArea
+         * @param {annie.Rectangle} rect
+         * @since 3.0.1
+         */
+        public set hitArea(rect: annie.Rectangle) {
+            this._hitArea = rect;
+        }
+
+        public get hitArea(): annie.Rectangle {
+            return this._hitArea;
+        }
+
+        private _hitArea: annie.Rectangle = null;
+        /**
+         * <h4><font color="red">小游戏不支持 小程序不支持</font></h4>
+         * 是否对图片对象使用像素碰撞检测透明度，默认关闭
+         * @property hitTestWithPixel
+         * @type {boolean}
+         * @default false
+         * @since 1.1.0
+         */
+        public hitTestWithPixel: boolean = false;
         /**
          * 点击碰撞测试,就是舞台上的一个point是否在显示对象内,在则返回该对象，不在则返回null
          * @method hitTestPoint
@@ -524,17 +579,37 @@ namespace annie {
          */
         public hitTestPoint(hitPoint: Point, isGlobalPoint: boolean = false): DisplayObject {
             let s = this;
-            if (!s.visible || !s.mouseEnable || (s._splitBoundsList.length == 1 && !s._splitBoundsList[0].isDraw) || (s._splitBoundsList.length == 0)) return null;
-            let p: Point;
+            if (!s.visible || !s.mouseEnable) return null;
+            let p: any;
             if (isGlobalPoint) {
-                p = s.globalToLocal(hitPoint, DisplayObject._bp);
+                p = s.globalToLocal(hitPoint, DisplayObject._p1);
             } else {
                 p = hitPoint;
             }
-            p.x += s._offsetX;
-            p.y += s._offsetY;
+            //如果有设置鼠标活动区域,则优先使用活动区域
+            if (s._hitArea) {
+                if (s._hitArea.isPointIn(p)) {
+                    return s;
+                }
+            }
             if (s._bounds.isPointIn(p)) {
-                return s;
+                if (s.hitTestWithPixel) {
+                    let texture = s._texture;
+                    if (!texture || texture.width == 0 || texture.height == 0) {
+                        return null;
+                    }
+                    let _canvas = DisplayObject._canvas;
+                    let ctx = _canvas.getContext('2d');
+                    _canvas.width = 1;
+                    _canvas.height = 1;
+                    ctx.clearRect(0, 0, 1, 1);
+                    ctx.drawImage(texture, p.x - s._offsetX, p.y - s._offsetY, 1, 1, 0, 0, 1, 1);
+                    if (ctx.getImageData(0, 0, 1, 1).data[3] > 0) {
+                        return s
+                    }
+                } else {
+                    return s;
+                }
             }
             return null;
         }
@@ -544,14 +619,14 @@ namespace annie {
         }
 
         /**
-         * 获取对象形变后外切矩形。
+         * 获取对象形变后外切矩形
          * 可以从这个方法中读取到此显示对象变形后x方向上的宽和y方向上的高
-         * @method getTransformRect
+         * @method getDrawRect
          * @public
          * @since 1.0.0
          * @return {annie.Rectangle}
          */
-        public getTransformRect(matrix: annie.Matrix = null, bounds: annie.Rectangle = null): void {
+        public getDrawRect(matrix: annie.Matrix = null, bounds: annie.Rectangle = null): annie.Rectangle {
             let s = this;
             if (matrix == void 0) {
                 matrix = s.matrix;
@@ -565,23 +640,26 @@ namespace annie {
             matrix.transformPoint(x + w, y, DisplayObject._p2);
             matrix.transformPoint(x + w, y + h, DisplayObject._p3);
             matrix.transformPoint(x, y + h, DisplayObject._p4);
-            Rectangle.createFromPoints(DisplayObject._transformRect, DisplayObject._p1, DisplayObject._p2, DisplayObject._p3, DisplayObject._p4);
+            return Rectangle.createFromPoints(DisplayObject._transformRect, DisplayObject._p1, DisplayObject._p2, DisplayObject._p3, DisplayObject._p4);
         }
         /**
-         * 更新函数
-         * @method update
-         * @public
-         * @since 1.0.0
-         * @return {void}
+         * 更新贴图
          */
-        protected updateMatrix(): void {
-            let s = this;
+        abstract _onUpdateTexture():void;
+        protected _onUpdateMatrixAndAlpha(): void {
+            let s = this, cm: Matrix, pcm: Matrix, ca: number, pca: number;
             let isHadParent: boolean = s.parent instanceof annie.Sprite;
+            cm = s._cMatrix;
+            ca = s._cAlpha;
+            if (isHadParent) {
+                pcm = s.parent._cMatrix;
+                pca = s.parent._cAlpha;
+            }
             if (s.a2x_um) {
-                s._matrix.createBox(s._lastX, s._lastY, s._scaleX, s._scaleY, s._rotation, s._skewX, s._skewY, s._anchorX - s._offsetX, s._anchorY - s._offsetY);
+                s._matrix.createBox(s._x, s._y, s._scaleX, s._scaleY, s._rotation, s._skewX, s._skewY, s._anchorX, s._anchorY);
             }
             if (s._cp) {
-                s.a2x_um = s.a2x_ua = s.a2x_uf = true;
+                s.a2x_um = s.a2x_ua=s.a2x_uf= true;
                 s._cp = false;
             } else {
                 if (isHadParent) {
@@ -592,100 +670,22 @@ namespace annie {
                     if (PUI.a2x_ua) {
                         s.a2x_ua = true;
                     }
-                    if (PUI.a2x_uf) {
-                        s.a2x_uf = true;
-                    }
                 }
             }
             if (s.a2x_um) {
-                s.cMatrix.setFrom(s._matrix);
+                cm.setFrom(s._matrix);
                 if (isHadParent) {
-                    s.cMatrix.prepend(s.parent.cMatrix);
+                    cm.prepend(pcm);
                 }
             }
             if (s.a2x_ua) {
-                s.cAlpha = s._alpha;
+                ca = s._alpha;
                 if (isHadParent) {
-                    s.cAlpha *= s.parent.cAlpha;
+                    ca *= pca
                 }
-            }
-            if (s.a2x_uf) {
-                s.cFilters = [];
-                let sf = s.filters;
-                if (sf instanceof Array) {
-                    let len = sf.length;
-                    for (let i = 0; i < len; i++) {
-                        s.cFilters.push(sf[i]);
-                    }
-                }
-                if (isHadParent) {
-                    if (s.parent.cFilters.length > 0) {
-                        let len = s.parent.cFilters.length, pf = s.parent.cFilters;
-                        for (let i = len - 1; i >= 0; i--) {
-                            s.cFilters.unshift(pf[i]);
-                        }
-                    }
-                }
+                s._cAlpha = ca;
             }
         }
-        protected _checkDrawBounds() {
-            let s = this;
-            //检查所有bounds矩阵是否在可视范围里
-            let sbl = s._splitBoundsList;
-            let dtr = DisplayObject._transformRect;
-            if (s.stage){
-                for (let i = 0; i < sbl.length; i++) {
-                    s.getTransformRect(s.cMatrix, sbl[i].rect);
-                    sbl[i].isDraw = Rectangle.testRectCross(dtr, s.stage.renderObj.viewPort);
-                }
-            } else if (annie._dRender) {
-                for (let i = 0; i < sbl.length; i++) {
-                    s.getTransformRect(s.cMatrix, sbl[i].rect);
-                    sbl[i].isDraw = Rectangle.testRectCross(dtr, annie._dRender.viewPort);
-                }
-            }
-        }
-
-        /**
-         * 调用此方法将显示对象渲染到屏幕
-         * @method render
-         * @public
-         * @since 1.0.0
-         * @param {annie.IRender} renderObj
-         * @return {void}
-         */
-        public render(renderObj: IRender | any): void {
-            let s = this;
-            if (s._visible) {
-                if (s.cAlpha > 0) {
-                    let cf = s.cFilters;
-                    let cfLen = cf.length;
-                    let fId = -1;
-                    if (cfLen) {
-                        for (let i = 0; i < cfLen; i++) {
-                            if (s.cFilters[i].type == "Shadow") {
-                                fId = i;
-                                break;
-                            }
-                        }
-                    }
-                    if (fId >= 0) {
-                        let ctx: any = renderObj["_ctx"];
-                        ctx.shadowBlur = cf[fId].blur;
-                        ctx.shadowColor = cf[fId].color;
-                        ctx.shadowOffsetX = cf[fId].offsetX;
-                        ctx.shadowOffsetY = cf[fId].offsetY;
-                        renderObj.draw(s);
-                        ctx.shadowBlur = 0;
-                        ctx.shadowOffsetX = 0;
-                        ctx.shadowOffsetY = 0;
-                    } else {
-                        renderObj.draw(s);
-                    }
-                }
-            }
-        }
-
         /**
          * 获取或者设置显示对象在父级里的x方向的宽，不到必要不要用此属性获取高
          * 如果你要同时获取宽高，建议使用 getWH()方法获取宽和高
@@ -695,17 +695,21 @@ namespace annie {
          * @return {number}
          */
         public get width(): number {
-            this.getTransformRect();
+            this._onUpdateMatrixAndAlpha();
+            this.getDrawRect();
             return DisplayObject._transformRect.width;
         }
 
         public set width(value: number) {
             let s = this;
-            s.getTransformRect();
+            s._onUpdateMatrixAndAlpha();
+            s.getDrawRect();
             let w = DisplayObject._transformRect.width;
-            if (value > 0 && w > 0) {
+            if (w > 0) {
                 let sx = value / w;
                 s.scaleX *= sx;
+            } else {
+                s.scaleX = 1;
             }
         }
 
@@ -716,8 +720,9 @@ namespace annie {
          * @return {{w: number; h: number}}
          */
         public getWH(): { w: number, h: number } {
-            this.getTransformRect();
-            return {w: DisplayObject._transformRect.width, h: DisplayObject._transformRect.height};
+            this._onUpdateMatrixAndAlpha();
+            this.getDrawRect();
+            return { w: DisplayObject._transformRect.width, h: DisplayObject._transformRect.height };
         }
 
         /**
@@ -729,17 +734,21 @@ namespace annie {
          * @return {number}
          */
         public get height(): number {
-            this.getTransformRect();
+            this._onUpdateMatrixAndAlpha();
+            this.getDrawRect();
             return DisplayObject._transformRect.height;
         }
 
         public set height(value: number) {
             let s = this;
-            s.getTransformRect();
+            s._onUpdateMatrixAndAlpha();
+            s.getDrawRect();
             let h = DisplayObject._transformRect.height;
-            if (value > 0 && h > 0) {
+            if (h > 0) {
                 let sy = value / h;
                 s.scaleY *= sy;
+            } else {
+                s.scaleY = 1;
             }
         }
 
@@ -767,10 +776,10 @@ namespace annie {
                 }
             }
         }
-        public boundsRow: number = 1;
-        public boundsCol: number = 1;
+
         /**
          * 更新boundsList矩阵
+         * @method _updateSplitBounds
          * @private
          */
         protected _updateSplitBounds(): void {
@@ -778,25 +787,55 @@ namespace annie {
             let sbl: any = [];
             let bounds = s.getBounds();
             if (bounds.width * bounds.height > 0) {
-                if (s.boundsRow == 1 && s.boundsCol == 1) {
-                    sbl.push({
-                        isDraw: true,
-                        rect: bounds
-                    });
-                } else {
-                    let rw = Math.ceil(s._bounds.width / s.boundsRow);
-                    let rh = Math.ceil(s._bounds.height / s.boundsCol);
-                    for (let i = 0; i < s.boundsRow; i++) {
-                        for (let j = 0; j < s.boundsCol; j++) {
-                            sbl.push({
-                                isDraw: true,
-                                rect: new Rectangle(i * rw, j * rh, rw, rh)
-                            });
+                let row = 1;
+                let col = 1;
+                let br = 0;
+                let bc = 0;
+                let newWidth = bounds.width;
+                let newHeight = bounds.height;
+                if (annie.isCutDraw) {
+                    br = 1024;
+                    bc = 1024;
+                    newWidth = br + 2;
+                    newHeight = bc + 2;
+                    if (bounds.width > br) {
+                        row = Math.ceil(bounds.width / br);
+                    }
+                    if (bounds.height > bc) {
+                        col = Math.ceil(bounds.height / bc);
+                    }
+                }
+                for (let i = 0; i < row; i++) {
+                    for (let j = 0; j < col; j++) {
+                        let newX = i * br;
+                        let newY = j * bc;
+                        if (i == row - 1) {
+                            newWidth = bounds.width - newX;
                         }
+                        if (j == col - 1) {
+                            newHeight = bounds.height - newY;
+                        }
+                        sbl.push({
+                            isDraw: true,
+                            rect: new Rectangle(newX + bounds.x, newY + bounds.y, newWidth, newHeight)
+                        });
                     }
                 }
             }
             s._splitBoundsList = sbl;
+            s._needCheckDrawBounds=true;
+        }
+        protected _needCheckDrawBounds:boolean=false;
+        protected _checkDrawBounds() {
+            let s = this;
+            //检查所有bounds矩阵是否在可视范围里
+            let sbl = s._splitBoundsList;
+            if (s.stage) {
+                for (let i = 0; i < sbl.length; i++) {
+                    sbl[i].isDraw = Rectangle.testRectCross(s.getDrawRect(s._cMatrix, sbl[i].rect), s.stage.viewPort);
+                }
+            }
+            s._needCheckDrawBounds=false;
         }
         /**
          * @method getSound
@@ -808,7 +847,7 @@ namespace annie {
             let sounds = this.soundList,
                 newSounds: any = [];
             if (sounds instanceof Array) {
-                if (typeof(id) == "string") {
+                if (typeof (id) == "string") {
                     for (let i = sounds.length - 1; i >= 0; i--) {
                         if (sounds[i].name == id) {
                             //这里是全部找出来
@@ -862,7 +901,7 @@ namespace annie {
         public removeSound(id: number | string): void {
             let sounds = this.soundList;
             if (sounds instanceof Array) {
-                if (typeof(id) == "string") {
+                if (typeof (id) == "string") {
                     for (let i = sounds.length - 1; i >= 0; i--) {
                         //这里是全部找出来
                         if (sounds[i].name == id) {
@@ -876,6 +915,7 @@ namespace annie {
                 }
             }
         }
+
         //每个Flash文件生成的对象都有一个自带的初始化信息
         private _a2x_res_obj: any = {};
 
@@ -894,14 +934,14 @@ namespace annie {
             s.stage = null;
             s._bounds = null;
             s._splitBoundsList = null;
-            s.cFilters = null;
             s._matrix = null;
-            s.cMatrix = null;
+            s._cMatrix = null;
             s._texture = null;
             super.destroy();
         }
 
-        public _isOnStage: boolean = false;
+        //这里为什么要用undefined呢，这样可以知道一个对象是否从未添加到舞台过
+        public _isOnStage: boolean = undefined;
 
         public _onRemoveEvent(isReSetMc: boolean): void {
             //如果有音乐,则关闭音乐
@@ -915,7 +955,6 @@ namespace annie {
             }
             s.dispatchEvent(annie.Event.REMOVE_TO_STAGE);
         }
-
         public _onAddEvent(): void {
             let s = this;
             s._isOnStage = true;
@@ -928,15 +967,11 @@ namespace annie {
             }
             s.dispatchEvent(annie.Event.ADD_TO_STAGE);
         }
-
-        public _onEnterFrameEvent(): void {
-            let s = this;
-            if (!s._visible) {
-                return;
+        public _onUpdateFrame(mcSpeed: number = 1): void {
+            if (this._visible) {
+                this.dispatchEvent(annie.Event.ENTER_FRAME);
             }
-            s.dispatchEvent(annie.Event.ENTER_FRAME);
         }
-
         /**
          * 启动鼠标或者触摸拖动
          * @method startDrag
@@ -971,17 +1006,29 @@ namespace annie {
         public stopDrag() {
             annie.Stage._dragDisplay = null;
         }
-        //x y scaleX scaleY rotation alpha
-        private _changeTransformInfo:Array<boolean>=[false,false,false,false,false,false];
+        private _changeTransformInfo: Array<boolean> = [false, false, false, false, false, false];
         /**
-         * 如果你在mc更改了对象的x y sacle rotation alpha，最后想还原，不再需要自我控制，可以调用些方法
+         * 如果你在mc更改了对象的x y scale rotation alpha，最后想还原，不再需要自我控制，可以调用这方法
          * @method clearCustomTransform
+         * @param transId{number}  //0->x,1->y,2->scaleX,3->scaleY,4->rotation,5->alpha,-1->all
+         * @public
          * @since 3.1.0
          */
-        public clearCustomTransform(){
-            for(let i=0;i<6;i++){
-                this._changeTransformInfo[i]=false;
+        public clearCustomTransform(transId: number = -1) {
+            let s = this;
+            if (transId = -1) {
+                for (let i = 0; i < 6; i++) {
+                    s._changeTransformInfo[i] = false;
+                }
+            } else {
+                s._changeTransformInfo[transId] = false;
             }
+        }
+        public clearBounds() {
+            this._bounds.x = 0;
+            this._bounds.y = 0;
+            this._bounds.width = 0;
+            this._bounds.height = 0;
         }
     }
 }

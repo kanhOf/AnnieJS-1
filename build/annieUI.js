@@ -16,6 +16,694 @@ var __extends = (this && this.__extends) || (function () {
  */
 var annieUI;
 (function (annieUI) {
+    /**
+     * 滚动视图，有些时候你的内容超过了一屏，需要上下或者左右滑动来查看内容，这个时候，你就应该用它了
+     * @class annieUI.Scroller
+     * @public
+     * @extends annie.AObject
+     * @since 3.1.0
+     */
+    var Scroller = /** @class */ (function (_super) {
+        __extends(Scroller, _super);
+        /**
+         * 初始化
+         * @method Scroller
+         * @param {annie.DisplayObject} container
+         * @param {number} viewWidth
+         * @param {number} viewHeight
+         * @param {number} scrollWidth
+         * @param {number} scrollHeight
+         */
+        function Scroller(container, viewWidth, viewHeight, scrollWidth, scrollHeight) {
+            var _this = _super.call(this) || this;
+            /**
+             * 是否纵向滚动
+             * @property isScrollY
+             * @type {boolean}
+             * @public
+             * @since 3.1.5
+             * @default true;
+             */
+            _this.isScrollY = true;
+            /**
+             * 是否横向滚动
+             * @property isScrollX
+             * @type {boolean}
+             * @since 3.1.5
+             * @public
+             * @default true;
+             */
+            _this.isScrollX = true;
+            /**
+             * 是否松开鼠标后让其自由缓冲滑动
+             * @property isMomentum
+             * @type {boolean}
+             * @since 3.1.5
+             * @public
+             * @default true;
+             */
+            _this.isMomentum = true;
+            /**
+             * 是否滑到边界后有回弹效果
+             * @property isBounce
+             * @type {boolean}
+             * @since 3.1.5
+             * @public
+             * @default true;
+             */
+            _this.isBounce = true;
+            /**
+             * 回弹的动效时长,单位:ms
+             * @property bounceTime
+             * @type {number}
+             * @public
+             * @since 3.1.5
+             * @default 300
+             */
+            _this.bounceTime = 300;
+            /**
+             * 是否需要横向纵向保护，有些时候你想纵向滑动，但鼠标也轻微的左右飘了，如果不lock刚好左右滑动也被允许的话，则左右也会滑动，横向滑动则相反。
+             * 如果想鼠标不那么灵敏的话，可以加上一把锁，这样左右滑的时候上下不会滑，上下滑的时候左右不会滑
+             * @property isLocked
+             * @type {boolean}
+             * @public
+             * @since 3.1.5
+             * @default 300
+             */
+            _this.isLocked = true;
+            /**
+             * 锁的像素范围
+             * @property lockDis
+             * @type {number}
+             * @since 3.1.5
+             * @public
+             * @default 5
+             */
+            _this.lockDis = 5;
+            _this._curX = 0;
+            _this._curY = 0;
+            _this._viewWidth = 0;
+            _this._viewHeight = 0;
+            _this._scrollWidth = 0;
+            _this._scrollHeight = 0;
+            _this.startX = 0;
+            _this.startY = 0;
+            _this.maxScrollX = 0;
+            _this.maxScrollY = 0;
+            _this.endTime = 0;
+            _this.mouseStatus = 0;
+            _this.distX = 0;
+            _this.distY = 0;
+            _this.startTime = 0;
+            _this.absStartX = 0;
+            _this.absStartY = 0;
+            _this.pointX = 0;
+            _this.pointY = 0;
+            /**
+             * 滑动衰减系数，值越大衰减越快
+             * @property deceleration
+             * @type {number}
+             * @public
+             * @since 3.2.1
+             * @default 0.0006
+             */
+            _this.deceleration = 0.0006;
+            _this.destTime = 0;
+            _this.destX = 0;
+            _this.destY = 0;
+            _this.duration = 0;
+            _this._mouseEvent = null;
+            _this._enterFrame = null;
+            var s = _this;
+            s._instanceType = "annieUI.Scroller";
+            s._mouseEvent = s.onMouseEvent.bind(s);
+            s._enterFrame = s.onEnterFrame.bind(s);
+            s.init(container, viewWidth, viewHeight, scrollWidth, scrollHeight);
+            return _this;
+        }
+        Object.defineProperty(Scroller.prototype, "curX", {
+            /**
+             * 当前滑动的x坐标 更改此参数则需要调用resetPosition()方法生效
+             * @property curX
+             * @type {number}
+             * @since 3.1.5
+             * @default 0
+             */
+            get: function () {
+                return this._curX;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Scroller.prototype, "curY", {
+            /**
+             * 当前滑动的y坐标 更改此参数则需要调用resetPosition()方法生效
+             * @property curY
+             * @type {number}
+             * @since 3.1.5
+             * @default 0
+             */
+            get: function () {
+                return this._curY;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Scroller.prototype, "viewWidth", {
+            /**
+             * 当前显示范围的宽
+             * @property viewWidth
+             * @type {number}
+             * @since 3.1.5
+             * @default 0
+             * @readonly
+             */
+            get: function () {
+                return this._viewWidth;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Scroller.prototype, "viewHeight", {
+            /**
+             * 当前显示范围的高
+             * @property viewHeight
+             * @type {number}
+             * @since 3.1.5
+             * @default 0
+             * @readonly
+             */
+            get: function () {
+                return this._viewHeight;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Scroller.prototype, "scrollWidth", {
+            /**
+             * 当前横向的滑动范围
+             * @property scrollWidth
+             * @type {number}
+             * @since 3.1.5
+             * @default 0
+             * @readonly
+             */
+            get: function () {
+                return this._scrollWidth;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Scroller.prototype, "scrollHeight", {
+            /**
+             * 当前纵向的滑动范围
+             * @property scrollHeight
+             * @type {number}
+             * @since 3.1.5
+             * @default 0
+             * @readonly
+             */
+            get: function () {
+                return this._scrollHeight;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        /**
+         * 初始化，也可以反复调用此方法重用scroller
+         * @method init
+         * @param {annie.DisplayObject} container
+         * @param {number} viewWidth
+         * @param {number} viewHeight
+         * @param {number} scrollWidth
+         * @param {number} scrollHeight
+         * @public
+         * @since 3.1.5
+         */
+        Scroller.prototype.init = function (container, viewWidth, viewHeight, scrollWidth, scrollHeight) {
+            var s = this;
+            if (s._container && s._container != container) {
+                //移除
+                s._container.removeEventListener(annie.MouseEvent.MOUSE_DOWN, s._mouseEvent, false);
+                s._container.removeEventListener(annie.MouseEvent.MOUSE_MOVE, s._mouseEvent, false);
+                s._container.removeEventListener(annie.MouseEvent.MOUSE_UP, s._mouseEvent, false);
+                s._container.removeEventListener(annie.MouseEvent.MOUSE_OUT, s._mouseEvent);
+                s._container.removeEventListener(annie.Event.ENTER_FRAME, s._enterFrame);
+            }
+            if (s._container != container) {
+                s._container = container;
+                container.addEventListener(annie.MouseEvent.MOUSE_DOWN, s._mouseEvent, false);
+                container.addEventListener(annie.MouseEvent.MOUSE_MOVE, s._mouseEvent, false);
+                container.addEventListener(annie.MouseEvent.MOUSE_UP, s._mouseEvent, false);
+                container.addEventListener(annie.MouseEvent.MOUSE_OUT, s._mouseEvent);
+                container.addEventListener(annie.Event.ENTER_FRAME, s._enterFrame);
+            }
+            s.isRunning = false;
+            s.endTime = 0;
+            s.setViewWHAndScrollWH(viewWidth, viewHeight, scrollWidth, scrollHeight);
+        };
+        /**
+         * 当更改了viewWidth,viewHeight其中一个或两个同时也更改了scrollWidth,scrollHeight其中的一个或者两个
+         * 需要调用此方法重置，如果只是单方面更改了viewWidth,viewHeight其中一个或两个,则可以调用setViewWH()
+         * 如果只是更改了scrollWidth,scrollHeight其中的一个或者两个，则可以调用setScrollWH()
+         * @method setViewWHAndScrollWH
+         * @public
+         * @since 3.1.5
+         * @param {number} viewWidth
+         * @param {number} viewHeight
+         * @param {number} scrollWidth
+         * @param {number} scrollHeight
+         */
+        Scroller.prototype.setViewWHAndScrollWH = function (viewWidth, viewHeight, scrollWidth, scrollHeight) {
+            var s = this;
+            s._viewHeight = viewHeight;
+            s._viewWidth = viewWidth;
+            s._scrollWidth = scrollWidth;
+            s._scrollHeight = scrollHeight;
+            s._updateViewAndScroll();
+        };
+        /**
+         * 当更改了viewWidth,viewHeight其中一个或两个,需要调用此方法重置.
+         * @method setViewWH
+         * @public
+         * @since 3.1.5
+         * @param {number} viewWidth
+         * @param {number} viewHeight
+         */
+        Scroller.prototype.setViewWH = function (viewWidth, viewHeight) {
+            var s = this;
+            s._viewHeight = viewHeight;
+            s._viewWidth = viewWidth;
+            s._updateViewAndScroll();
+        };
+        /**
+         * 当更改了scrollWidth,scrollHeight其中的一个或者两个,需要调用此方法重置.
+         * @method setScrollWH
+         * @public
+         * @since 3.1.5
+         * @param {number} scrollWidth
+         * @param {number} scrollHeight
+         */
+        Scroller.prototype.setScrollWH = function (scrollWidth, scrollHeight) {
+            var s = this;
+            s._scrollWidth = scrollWidth;
+            s._scrollHeight = scrollHeight;
+            s._updateViewAndScroll();
+        };
+        Scroller.prototype._updateViewAndScroll = function () {
+            var s = this;
+            s.maxScrollX = s.viewWidth - s.scrollWidth;
+            s.maxScrollY = s.viewHeight - s.scrollHeight;
+            if (s.maxScrollX > 0) {
+                s.maxScrollX = 0;
+            }
+            if (s.maxScrollY > 0) {
+                s.maxScrollY = 0;
+            }
+            if (!s.isScrollX) {
+                s.maxScrollX = 0;
+                s._scrollWidth = s.viewWidth;
+            }
+            if (!s.isScrollY) {
+                s.maxScrollY = 0;
+                s._scrollHeight = s.viewHeight;
+            }
+            s.resetPosition(200);
+        };
+        Scroller.prototype.onEnterFrame = function (e) {
+            var s = this;
+            if (s.isRunning) {
+                var now = Date.now(), newX = void 0, newY = void 0, easing = void 0;
+                if (now >= s.destTime) {
+                    s.isRunning = false;
+                    s._translate(s.destX, s.destY);
+                    if (!s.resetPosition(s.bounceTime)) {
+                        s.dispatchEvent(annie.Event.ON_SCROLL_STOP);
+                        if (s._curX == 0 && s._curY == 0) {
+                            s.dispatchEvent(annie.Event.ON_SCROLL_TO_HEAD);
+                        }
+                        else if (s._curX == s.maxScrollX && s._curY == s.maxScrollY) {
+                            s.dispatchEvent(annie.Event.ON_SCROLL_TO_END);
+                        }
+                    }
+                }
+                else {
+                    now = (now - s.startTime) / s.duration;
+                    easing = s.easingFn(now);
+                    newX = (s.destX - s.startX) * easing + s.startX;
+                    newY = (s.destY - s.startY) * easing + s.startY;
+                    s._translate(newX, newY);
+                }
+            }
+        };
+        Scroller.prototype.onMouseEvent = function (e) {
+            var s = this;
+            if (e.type == annie.MouseEvent.MOUSE_DOWN) {
+                s.isRunning = false;
+                s.mouseStatus = 1;
+                s.distX = 0;
+                s.distY = 0;
+                s.startTime = Date.now();
+                s.startX = s._curX;
+                s.startY = s._curY;
+                s.absStartX = s._curX;
+                s.absStartY = s._curY;
+                s.pointX = e.localX;
+                s.pointY = e.localY;
+            }
+            else if (e.type == annie.MouseEvent.MOUSE_MOVE) {
+                if (s.mouseStatus < 1) {
+                    return;
+                }
+                var deltaX = e.localX - s.pointX, deltaY = e.localY - s.pointY, timestamp = Date.now(), newX = void 0, newY = void 0, absDistX = void 0, absDistY = void 0;
+                s.pointX = e.localX;
+                s.pointY = e.localY;
+                s.distX += deltaX;
+                s.distY += deltaY;
+                absDistX = Math.abs(s.distX);
+                absDistY = Math.abs(s.distY);
+                if (timestamp - s.endTime > 300 && (absDistX < 10 && absDistY < 10)) {
+                    return;
+                }
+                if (s.isLocked) {
+                    if (absDistX > absDistY + s.lockDis) {
+                        deltaY = 0;
+                    }
+                    else if (absDistY >= absDistX + s.lockDis) {
+                        deltaX = 0;
+                    }
+                }
+                deltaX = s.isScrollX ? deltaX : 0;
+                deltaY = s.isScrollY ? deltaY : 0;
+                newX = s._curX + deltaX;
+                newY = s._curY + deltaY;
+                if (newX > 0 || newX < s.maxScrollX) {
+                    newX = s.isBounce ? s._curX + deltaX / 3 : newX > 0 ? 0 : s.maxScrollX;
+                }
+                if (newY > 0 || newY < s.maxScrollY) {
+                    newY = s.isBounce ? s._curY + deltaY / 3 : newY > 0 ? 0 : s.maxScrollY;
+                }
+                if (s.mouseStatus == 1) {
+                    s.dispatchEvent(annie.Event.ON_SCROLL_START);
+                }
+                s.mouseStatus = 2;
+                s._translate(newX, newY);
+                if (timestamp - s.startTime > 300) {
+                    s.startTime = timestamp;
+                    s.startX = s._curX;
+                    s.startY = s._curY;
+                }
+            }
+            else {
+                s.endTime = Date.now();
+                var momentumX = void 0, momentumY = void 0, duration = s.endTime - s.startTime, newX = s._curX, newY = s._curY, time = 0, easing = null;
+                if (s.resetPosition(s.bounceTime)) {
+                    s.mouseStatus = 0;
+                    return;
+                }
+                if (s.mouseStatus != 2) {
+                    s.mouseStatus = 0;
+                    return;
+                }
+                s.mouseStatus = 0;
+                s.scrollTo(newX, newY);
+                if (s.isMomentum && duration < 300) {
+                    momentumX = s.isScrollX ? Scroller.toMomentum(s._curX, s.startX, duration, s.maxScrollX, s.isBounce ? s.viewWidth / 2 : 0, s.deceleration) : {
+                        destination: newX,
+                        duration: 0
+                    };
+                    momentumY = s.isScrollY ? Scroller.toMomentum(s._curY, s.startY, duration, s.maxScrollY, s.isBounce ? s.viewHeight / 2 : 0, s.deceleration) : {
+                        destination: newY,
+                        duration: 0
+                    };
+                    newX = momentumX.destination;
+                    newY = momentumY.destination;
+                    time = Math.max(momentumX.duration, momentumY.duration);
+                }
+                if (newX != s._curX || newY != s._curY) {
+                    if (newX > 0 || newX < s.maxScrollX || newY > 0 || newY < s.maxScrollY) {
+                        easing = annie.Tween.quadraticOut;
+                    }
+                    s.scrollTo(newX, newY, time, easing);
+                    return;
+                }
+                s.dispatchEvent(annie.Event.ON_SCROLL_STOP);
+            }
+        };
+        Scroller.prototype.destroy = function () {
+            var s = this;
+            if (s._container) {
+                s._container.removeEventListener(annie.MouseEvent.MOUSE_MOVE, s._mouseEvent, false);
+                s._container.removeEventListener(annie.MouseEvent.MOUSE_DOWN, s._mouseEvent, false);
+                s._container.removeEventListener(annie.MouseEvent.MOUSE_UP, s._mouseEvent, false);
+                s._container.removeEventListener(annie.MouseEvent.MOUSE_OUT, s._mouseEvent);
+                s._container.removeEventListener(annie.Event.ENTER_FRAME, s._enterFrame);
+            }
+            s._container = null;
+            s.easingFn = null;
+            _super.prototype.destroy.call(this);
+        };
+        Scroller.prototype.resetPosition = function (time) {
+            if (time === void 0) { time = 0; }
+            var s = this;
+            var x = s._curX, y = s._curY;
+            time = time || 0;
+            if (!s.isScrollX || s._curX > 0) {
+                x = 0;
+            }
+            else if (s._curX < s.maxScrollX) {
+                x = s.maxScrollX;
+            }
+            if (!s.isScrollY || s._curY > 0) {
+                y = 0;
+            }
+            else if (s._curY < s.maxScrollY) {
+                y = s.maxScrollY;
+            }
+            if (x == s._curX && y == s._curY) {
+                return false;
+            }
+            s.scrollTo(x, y, time, null);
+            return true;
+        };
+        /**
+         * 从设置的x,y坐标滑过来。 注意x y位置是负数，想想为什么
+         * @method scrollBy
+         * @param {number} x 从哪个x坐标滑过来
+         * @param {number} y 从哪个y坐标滑过来
+         * @param {number} time 滑动时长 ms,0的话没效果直接跳
+         * @param {Function} easing annie.Tween中指定的缓存方法
+         * @public
+         * @since 3.1.5
+         */
+        Scroller.prototype.scrollBy = function (x, y, time, easing) {
+            if (time === void 0) { time = 0; }
+            if (easing === void 0) { easing = null; }
+            var s = this;
+            x = s._curX + x;
+            y = s._curY + y;
+            time = time || 0;
+            s.scrollTo(x, y, time, easing);
+        };
+        /**
+         * 滑动到设置的x,y坐标。 注意x y位置是负数，想想为什么
+         * @method scrollTo
+         * @param {number} x 要滑去的x坐标
+         * @param {number} y 要滑去的y坐标
+         * @param {number} time 滑动时长 ms,0的话没效果直接跳
+         * @param {Function} easing annie.Tween中指定的缓存方法
+         * @public
+         * @since 3.1.5
+         */
+        Scroller.prototype.scrollTo = function (x, y, time, easing) {
+            if (time === void 0) { time = 0; }
+            if (easing === void 0) { easing = null; }
+            var s = this;
+            if (!time) {
+                s._translate(x, y);
+            }
+            else {
+                easing = easing || annie.Tween.circularOut;
+                s.startX = s._curX;
+                s.startY = s._curY;
+                s.startTime = Date.now();
+                s.destTime = s.startTime + time;
+                s.destX = x;
+                s.destY = y;
+                s.duration = time;
+                s.easingFn = easing;
+                s.isRunning = true;
+            }
+        };
+        Scroller.prototype._translate = function (x, y) {
+            var s = this;
+            if (x != Number.NaN) {
+                s._curX = x;
+            }
+            if (y != Number.NaN) {
+                s._curY = y;
+            }
+            s.dispatchEvent(annie.Event.ON_SCROLL_ING, { posX: s._curX, posY: s._curY });
+        };
+        Scroller.toMomentum = function (current, start, time, lowerMargin, wrapperSize, deceleration) {
+            var distance = current - start, speed = Math.abs(distance) / time, destination, duration;
+            deceleration = deceleration === undefined ? 0.0006 : deceleration;
+            destination = current + (speed * speed) / (2 * deceleration) * (distance < 0 ? -1 : 1);
+            duration = speed / deceleration;
+            if (destination < lowerMargin) {
+                destination = wrapperSize ? lowerMargin - (wrapperSize / 2.5 * (speed / 8)) : lowerMargin;
+                distance = Math.abs(destination - current);
+                duration = distance / speed;
+            }
+            else if (destination > 0) {
+                destination = wrapperSize ? wrapperSize / 2.5 * (speed / 8) : 0;
+                distance = Math.abs(current) + destination;
+                duration = distance / speed;
+            }
+            return {
+                destination: destination,
+                duration: duration
+            };
+        };
+        ;
+        return Scroller;
+    }(annie.EventDispatcher));
+    annieUI.Scroller = Scroller;
+})(annieUI || (annieUI = {}));
+/**
+ * @module annieUI
+ */
+var annieUI;
+(function (annieUI) {
+    /**
+     * 用滚动的方式播放MC,回弹默认关闭，可开启
+     * @class annieUI.MCScroller
+     * @public
+     * @extends annieUI.Scroller
+     * @since 3.1.5
+     */
+    var MCScroller = /** @class */ (function (_super) {
+        __extends(MCScroller, _super);
+        /**
+         * 构造函数
+         * @method MCScroller
+         * @param {annie.MovieClip} mc 要被滑动的mc
+         * @param {number} rate mc 灵敏度，值越大滑动越慢，默认为10
+         * @param {boolean} isVertical 是横向还是竖向滑动，默认是竖向
+         */
+        function MCScroller(mc, rate, isVertical) {
+            if (rate === void 0) { rate = 10; }
+            if (isVertical === void 0) { isVertical = true; }
+            var _this = _super.call(this, mc, 0, 0, 0, 0) || this;
+            _this._rate = 0;
+            _this._isVertical = true;
+            var s = _this;
+            s._instanceType = "annieUI.MCScroller";
+            s.isBounce = false;
+            s.rate = rate;
+            s.isVertical = isVertical;
+            return _this;
+        }
+        Object.defineProperty(MCScroller.prototype, "rate", {
+            get: function () {
+                return this._rate;
+            },
+            /**
+             * 滑动的速率，值越大，滑动越慢,默认是10
+             * @property rate
+             * @param {number} value
+             * @since 3.1.5
+             * @public
+             */
+            set: function (value) {
+                var s = this;
+                var mc = s._container;
+                if (value != s._rate) {
+                    s._rate = value;
+                    var curFrame = s.curFramePos - 1;
+                    var sw = 0, sh = 0;
+                    if (s._isVertical) {
+                        s._curX = -curFrame * value;
+                        sh = mc.totalFrames * value;
+                    }
+                    else {
+                        s._curY = -curFrame * value;
+                        sw = mc.totalFrames * value;
+                    }
+                    s.setScrollWH(sw, sh);
+                }
+            },
+            enumerable: true,
+            configurable: true
+        });
+        ;
+        Object.defineProperty(MCScroller.prototype, "isVertical", {
+            /**
+             * 鼠标滑动的方向，默认纵向
+             * @property isVertical
+             * @since 3.1.5
+             * @public
+             * @return {boolean}
+             */
+            get: function () {
+                return this._isVertical;
+            },
+            set: function (value) {
+                var s = this;
+                if (s._isVertical != value) {
+                    if (!value) {
+                        s._curX = s._curY;
+                        s._scrollWidth = s._scrollHeight;
+                        s._scrollHeight = 0;
+                    }
+                    else {
+                        s._curY = s._curX;
+                        s._scrollHeight = s._scrollWidth;
+                        s._scrollWidth = 0;
+                    }
+                    s._isVertical = value;
+                    s._updateViewAndScroll();
+                }
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(MCScroller.prototype, "curFramePos", {
+            /**
+             * 只读，获取当前mc的frame具体值，带小数
+             * @property curFramePos
+             * @readonly
+             * @return {number}
+             */
+            get: function () {
+                var s = this;
+                var frame = 0;
+                if (s._isVertical) {
+                    frame = s._curY / s._rate;
+                }
+                else {
+                    frame = s._curX / s._rate;
+                }
+                return Math.abs(frame) + 1;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MCScroller.prototype._translate = function (x, y) {
+            _super.prototype._translate.call(this, x, y);
+            var s = this;
+            var mc = s._container;
+            mc.gotoAndStop(s.curFramePos);
+        };
+        return MCScroller;
+    }(annieUI.Scroller));
+    annieUI.MCScroller = MCScroller;
+})(annieUI || (annieUI = {}));
+/**
+ * @module annieUI
+ */
+var annieUI;
+(function (annieUI) {
     var Sprite = annie.Sprite;
     var Shape = annie.Shape;
     /**
@@ -30,26 +718,30 @@ var annieUI;
         /**
          * 构造函数
          * @method  ScrollPage
-         * @param {number} vW 可视区域宽
-         * @param {number} vH 可视区域高
-         * @param {number} maxDistance 最大滚动的长度
-         * @param {boolean} isVertical 是纵向还是横向，也就是说是滚x还是滚y,默认值为沿y方向滚动
+         * @param {annie.DisplayObject} view 需要滚动的显示对象，可为空，为空的话则会自动生成一个显示容器。
+         * @param {number} viewWidth 可视区域宽
+         * @param {number} viewHeight 可视区域高
+         * @param {number} scrollWidth 可滚动的宽度
+         * @param {number} scrollHeight 可滚动的高度
          * @example
-         *      s.sPage=new annieUI.ScrollPage(640,s.stage.viewRect.height,4943);
+         *      s.sPage=new annieUI.ScrollPage(null,640,1040,640,1040*4);
          *          s.addChild(s.sPage);
          *          s.sPage.view.addChild(new home.Content());
          *          s.sPage.y=s.stage.viewRect.y;
          *          s.sPage.mouseEnable=false;
-         * <p><a href="https://github.com/flash2x/demo3" target="_blank">测试链接</a></p>
          */
-        function ScrollPage(vW, vH, maxDistance, isVertical) {
-            if (isVertical === void 0) { isVertical = true; }
+        function ScrollPage(container, viewWidth, viewHeight, scrollWidth, scrollHeight) {
             var _this = _super.call(this) || this;
             //Event
             /**
-             * annieUI.ScrollPage组件滑动到开始位置事件
+             * annieUI.ScrollPage 组件滑动到开始位置事件
              * @event annie.Event.ON_SCROLL_TO_HEAD
              * @since 1.1.0
+             */
+            /**
+             * annieUI.ScrollPage 组件滑动到开始位置事件
+             * @event annie.Event.ON_SCROLL_ING
+             * @since 3.1.0
              */
             /**
              * annieUI.ScrollPage组件停止滑动事件
@@ -66,394 +758,97 @@ var annieUI;
              * @event annie.Event.ON_SCROLL_TO_END
              * @since 1.1.0
              */
-            //
-            /**
-             * 横向还是纵向 默认为纵向
-             * @property isVertical
-             * @type {boolean}
-             * @protected
-             * @since 1.0.0
-             * @default true
-             */
-            _this.isVertical = true;
-            /**
-             * 可见区域的宽
-             * @property viewWidth
-             * @type {number}
-             * @protected
-             * @since 1.0.0
-             * @default 0
-             */
-            _this.viewWidth = 0;
-            /**
-             * 可见区域的高
-             * @property viewHeight
-             * @type {number}
-             * @protected
-             * @since 1.0.0
-             * @default 0
-             */
-            _this.viewHeight = 0;
-            _this._tweenId = 0;
-            /**
-             * 整个滚动的最大距离值
-             * @property maxDistance
-             * @type {number}
-             * @public
-             * @since 1.0.0
-             * @default 1040
-             */
-            _this.maxDistance = 1040;
-            /**
-             * @property 滚动距离
-             * @type {number}
-             * @protected
-             * @default 0
-             * @since 1.0.0
-             */
-            _this.distance = 0;
-            /**
-             * 最小鼠标滑动距离
-             * @property  minDis
-             * @protected
-             * @type {number}
-             */
-            _this.minDis = 2;
             // 遮罩对象
             _this.maskObj = new Shape();
+            _this._view = null;
+            var s = _this;
+            s._instanceType = "annieUI.ScrollPage";
+            if (container) {
+                s._view = container;
+            }
+            else {
+                s._view = new annie.Sprite();
+            }
+            s.addChild(s.maskObj);
+            s.addChild(s._view);
+            s.view.mask = s.maskObj;
+            s.maskObj.x = -1;
+            s.maskObj.y = -1;
+            s.maskObj["_isUseToMask"] = 0;
+            s.maskObj.alpha = 0;
+            s._scroller = new annieUI.Scroller(s, viewWidth, viewHeight, scrollWidth, scrollHeight);
+            s._scroller.addEventListener(annie.Event.ON_SCROLL_ING, function (e) {
+                s._view.y = e.data.posY;
+                s._view.x = e.data.posX;
+                s.dispatchEvent(e);
+            });
+            s._scroller.addEventListener(annie.Event.ON_SCROLL_START, function (e) {
+                s.dispatchEvent(e);
+            });
+            s._scroller.addEventListener(annie.Event.ON_SCROLL_STOP, function (e) {
+                s.dispatchEvent(e);
+            });
+            s._scroller.addEventListener(annie.Event.ON_SCROLL_TO_HEAD, function (e) {
+                s.dispatchEvent(e);
+            });
+            s._scroller.addEventListener(annie.Event.ON_SCROLL_TO_END, function (e) {
+                s.dispatchEvent(e);
+            });
+            s.setViewWH(viewWidth, viewHeight);
+            return _this;
+        }
+        Object.defineProperty(ScrollPage.prototype, "view", {
             /**
-             * 真正的容器对象，所有滚动的内容都应该是添加到这个容器中
+             * 真正的被滚动的显示对象
              * @property view
              * @public
              * @since 1.0.0
              * @type {annie.Sprite}
              */
-            _this.view = new Sprite();
-            // 最后鼠标经过的坐标值
-            _this.lastValue = 0;
-            /**
-             * 速度
-             * @property speed
-             * @protected
-             * @since 1.0.0
-             * @type {number}
-             */
-            _this.speed = 0;
-            /**
-             * 加速度
-             * @property addSpeed
-             * @protected
-             * @since 1.0.0
-             * @type {number}
-             */
-            _this.addSpeed = 0;
-            /**
-             * 是否是停止滚动状态
-             * @property isStop
-             * @public
-             * @since 1.0.0
-             * @type {boolean}
-             * @default true
-             */
-            _this.isStop = true;
-            /**
-             * 滚动的最大速度，直接影响一次滑动之后最长可以滚多远
-             * @property maxSpeed
-             * @public
-             * @since 1.0.0
-             * @default 100
-             * @type {number}
-             */
-            _this.maxSpeed = 100;
-            /**
-             * 摩擦力,值越大，减速越快
-             * @property fSpeed
-             * @public
-             * @since 1.0.0
-             * @default 20
-             * @type {number}
-             */
-            _this.fSpeed = 20;
-            _this.paramXY = "y";
-            _this.stopTimes = -1;
-            _this.isMouseDownState = 0;
-            //是否是通过scrollTo方法在滑动中
-            _this.autoScroll = false;
-            /**
-             * 是否有回弹效果，默认是true
-             * @property isSpringBack
-             * @type {boolean}
-             * @since 2.0.1
-             */
-            _this.isSpringBack = true;
-            /**
-             * 是否允许通过鼠标去滚动
-             * @property isCanUseMouseScroll
-             * @type {boolean}
-             * @since 3.0.1
-             */
-            _this.isCanUseMouseScroll = true;
-            var s = _this;
-            s._instanceType = "annieUI.ScrollPage";
-            s.addChild(s.maskObj);
-            s.addChild(s.view);
-            s.view.mask = s.maskObj;
-            s.maskObj["_isUseToMask"] = 0;
-            s.maskObj.alpha = 0;
-            s.maxDistance = maxDistance;
-            s.setViewRect(vW, vH, isVertical);
-            var mouseEvent = s.onMouseEvent.bind(s);
-            s.addEventListener(annie.MouseEvent.MOUSE_DOWN, mouseEvent, false);
-            s.addEventListener(annie.MouseEvent.MOUSE_MOVE, mouseEvent, false);
-            s.addEventListener(annie.MouseEvent.MOUSE_UP, mouseEvent, false);
-            s.addEventListener(annie.MouseEvent.MOUSE_OUT, mouseEvent);
-            s._timer = new annie.Timer(20);
-            s._timer.addEventListener(annie.Event.TIMER, function () {
-                var view = s.view;
-                if (view != void 0 && view._isOnStage) {
-                    if (s.autoScroll)
-                        return;
-                    if (!s.isSpringBack) {
-                        if (view[s.paramXY] > 0) {
-                            s.addSpeed = 0;
-                            s.speed = 0;
-                            s.isStop = true;
-                            view[s.paramXY] = 0;
-                            return;
-                        }
-                        else if (view[s.paramXY] < s.distance - s.maxDistance) {
-                            s.addSpeed = 0;
-                            s.speed = 0;
-                            s.isStop = true;
-                            view[s.paramXY] = s.distance - s.maxDistance;
-                            return;
-                        }
-                    }
-                    if (!s.isStop) {
-                        if (Math.abs(s.speed) > 0) {
-                            view[s.paramXY] += s.speed;
-                            //是否超过了边界,如果超过了,则加快加速度,让其停止
-                            if (view[s.paramXY] > 0 || view[s.paramXY] < s.distance - s.maxDistance) {
-                                s.speed += s.addSpeed * s.fSpeed;
-                            }
-                            else {
-                                s.speed += s.addSpeed;
-                            }
-                            //说明超过了界线,准备回弹
-                            if (s.speed * s.addSpeed > 0) {
-                                s.dispatchEvent("onScrollStop");
-                                s.speed = 0;
-                            }
-                        }
-                        else {
-                            //检测是否超出了边界,如果超出了边界则回弹
-                            if (s.addSpeed != 0) {
-                                if (view[s.paramXY] > 0 || view[s.paramXY] < s.distance - s.maxDistance) {
-                                    var tarP = 0;
-                                    if (s.addSpeed > 0) {
-                                        if (s.distance < s.maxDistance) {
-                                            tarP = s.distance - s.maxDistance;
-                                        }
-                                    }
-                                    view[s.paramXY] += 0.4 * (tarP - view[s.paramXY]);
-                                    if (Math.abs(tarP - view[s.paramXY]) < 0.1) {
-                                        s.isStop = true;
-                                        if (s.addSpeed > 0) {
-                                            s.dispatchEvent("onScrollToEnd");
-                                        }
-                                        else {
-                                            s.dispatchEvent("onScrollToHead");
-                                        }
-                                    }
-                                }
-                            }
-                            else {
-                                s.isStop = true;
-                            }
-                        }
-                    }
-                    else {
-                        if (s.stopTimes >= 0) {
-                            s.stopTimes++;
-                            if (s.stopTimes >= 15) {
-                                s.speed = 0;
-                                if (view[s.paramXY] > 0 || view[s.paramXY] < s.distance - s.maxDistance) {
-                                    s.isStop = false;
-                                    s.stopTimes = -1;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            s._timer.start();
-            return _this;
-        }
-        /**
-         * 设置可见区域，可见区域的坐标始终在本地坐标中0,0点位置
-         * @method setViewRect
-         * @param {number}w 设置可见区域的宽
-         * @param {number}h 设置可见区域的高
-         * @param {boolean} isVertical 方向
-         * @public
-         * @since 1.1.1
-         */
-        ScrollPage.prototype.setViewRect = function (w, h, isVertical) {
-            var s = this;
-            s.maskObj.clear();
-            s.maskObj.beginFill("#000000");
-            s.maskObj.drawRect(0, 0, w, h);
-            s.viewWidth = w;
-            s.viewHeight = h;
-            s.maskObj.endFill();
-            s.isVertical = isVertical;
-            if (isVertical) {
-                s.distance = s.viewHeight;
-                s.paramXY = "y";
-            }
-            else {
-                s.distance = s.viewWidth;
-                s.paramXY = "x";
-            }
-            s.isVertical = isVertical;
-        };
-        ScrollPage.prototype.onMouseEvent = function (e) {
-            var s = this;
-            if (s.isCanUseMouseScroll) {
-                var view = s.view;
-                if (e.type == annie.MouseEvent.MOUSE_DOWN) {
-                    if (!s.isStop) {
-                        s.isStop = true;
-                    }
-                    if (s.autoScroll) {
-                        s.autoScroll = false;
-                        annie.Tween.kill(s._tweenId);
-                    }
-                    if (s.isVertical) {
-                        s.lastValue = e.localY;
-                    }
-                    else {
-                        s.lastValue = e.localX;
-                    }
-                    s.speed = 0;
-                    s.isMouseDownState = 1;
-                    s.dispatchEvent("onScrollStart");
-                }
-                else if (e.type == annie.MouseEvent.MOUSE_MOVE) {
-                    if (s.isMouseDownState < 1) {
-                        return;
-                    }
-                    s.isMouseDownState = 2;
-                    var currentValue = void 0;
-                    if (s.isVertical) {
-                        currentValue = e.localY;
-                    }
-                    else {
-                        currentValue = e.localX;
-                    }
-                    s.speed = currentValue - s.lastValue;
-                    if (s.speed > s.minDis) {
-                        s.addSpeed = -2;
-                        if (s.speed > s.maxSpeed) {
-                            s.speed = s.maxSpeed;
-                        }
-                    }
-                    else if (s.speed < -s.minDis) {
-                        if (s.speed < -s.maxSpeed) {
-                            s.speed = -s.maxSpeed;
-                        }
-                        s.addSpeed = 2;
-                    }
-                    else {
-                        s.speed = 0;
-                    }
-                    if (s.speed != 0) {
-                        var speedPer = 1;
-                        if (view[s.paramXY] > 0 || view[s.paramXY] < s.distance - s.maxDistance) {
-                            speedPer = 0.2;
-                        }
-                        view[s.paramXY] += (currentValue - s.lastValue) * speedPer;
-                    }
-                    s.lastValue = currentValue;
-                    s.stopTimes = 0;
-                }
-                else {
-                    s.isStop = false;
-                    s.stopTimes = -1;
-                    if (s.speed == 0 && s.isMouseDownState == 2) {
-                        s.dispatchEvent("onScrollStop");
-                    }
-                    s.isMouseDownState = 0;
-                }
-            }
-        };
-        /**
-         * 滚到指定的坐标位置
-         * @method scrollTo
-         * @param {number} dis 需要去到的位置
-         * @param {number} time 滚动需要的时间 默认为0 即没有动画效果直接跳到指定页
-         * @since 1.1.1
-         * @public
-         */
-        ScrollPage.prototype.scrollTo = function (dis, time) {
-            if (time === void 0) { time = 0; }
-            var s = this;
-            var newDis = s.paramXY == "x" ? s.viewWidth : s.viewHeight;
-            if (dis < 0) {
-                dis = 0;
-            }
-            else if (dis > s.maxDistance - newDis) {
-                dis = s.maxDistance - newDis;
-            }
-            if (time > 0) {
-                if (Math.abs(s.view[s.paramXY] + dis) > 2) {
-                    if (s._tweenId != -1)
-                        annie.Tween.kill(s._tweenId);
-                    s.autoScroll = true;
-                    s.isStop = true;
-                    s.isMouseDownState = 0;
-                    var obj = {};
-                    obj.onComplete = function () {
-                        s.autoScroll = false;
-                        s.dispatchEvent("onScrollStop");
-                        if (dis == 0) {
-                            s.dispatchEvent("onScrollToHead");
-                        }
-                        else if (dis == s.maxDistance - newDis) {
-                            s.dispatchEvent("onScrollToEnd");
-                        }
-                    };
-                    obj[s.paramXY] = -dis;
-                    s._tweenId = annie.Tween.to(s.view, time, obj);
-                    if (s.speed == 0) {
-                        s.dispatchEvent("onScrollStart");
-                    }
-                }
-            }
-            else {
-                s.view[s.paramXY] = -dis;
-            }
-        };
-        ScrollPage.prototype.destroy = function () {
-            var s = this;
-            s.maskObj = null;
-            s.view = null;
-            _super.prototype.destroy.call(this);
-        };
-        Object.defineProperty(ScrollPage.prototype, "currentPos", {
-            /**
-             * 获取当前滑动的位置
-             * @property currentPos
-             * @type {number}
-             * @since 2.0.1
-             */
             get: function () {
-                var s = this;
-                return -s.view[s.paramXY];
+                return this._view;
             },
             enumerable: true,
             configurable: true
         });
+        Object.defineProperty(ScrollPage.prototype, "scroller", {
+            /**
+             * scroller滑动控制器
+             * @property scroller
+             * @readonly
+             * @public
+             * @since 3.1.5
+             */
+            get: function () {
+                return this._scroller;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        /**
+         * 设置可见区域，可见区域的坐标始终在本地坐标中0,0点位置，如果只需要一个方向上可滑动，可以将view的宽或者高等于滑动的宽或者高
+         * @method setViewWH
+         * @param {number}viewWidth 设置可见区域的宽
+         * @param {number}viewHeight 设置可见区域的高
+         * @public
+         * @since 3.1.5
+         */
+        ScrollPage.prototype.setViewWH = function (viewWidth, viewHeight) {
+            var s = this;
+            s.maskObj.clear();
+            s.maskObj.beginFill("#000000");
+            s.maskObj.drawRect(0, 0, viewWidth + 2, viewHeight + 2);
+            s.maskObj.endFill();
+            if (s.scroll) {
+                s.scroll.setViewWH(viewWidth, viewHeight);
+            }
+        };
+        ScrollPage.prototype.destroy = function () {
+            var s = this;
+            s._scroller.destroy();
+            s._scroller = null;
+            _super.prototype.destroy.call(this);
+        };
         return ScrollPage;
     }(Sprite));
     annieUI.ScrollPage = ScrollPage;
@@ -464,191 +859,229 @@ var annieUI;
 var annieUI;
 (function (annieUI) {
     /**
-     * 滚动视图，有些时候你的内容超过了一屏，需要上下或者左右滑动来查看内容，这个时候，你就应该用它了
-     * @class annieUI.Scroller
+     * 有些时候需要大量的有规则的滚动内容。这个时候就应该用到这个类了
+     * @class annieUI.ScrollList
      * @public
-     * @extends annie.AObject
-     * @since 3.1.0
+     * @extends annieUI.ScrollPage
+     * @since 1.0.9
      */
-    var Scroller = /** @class */ (function (_super) {
-        __extends(Scroller, _super);
-        function Scroller() {
-            var _this = _super.call(this) || this;
-            //Event
-            /**
-             * annieUI.Scroller组件滑动到开始位置事件
-             * @event annie.Event.ON_SCROLL_ING
-             * @since 3.1.0
-             */
-            /**
-             * 滑动方向
-             * @property isVertical
-             * @type {boolean}
-             */
-            _this.isVertical = true;
-            /**
-             * 手指按下后的滑动速度，值越大，滑动越快
-             * @property speed
-             * @protected
-             * @since 3.1.0
-             * @type {number}
-             */
-            _this.speed = 0.2;
-            /**
-             * 滚动的最大速度，直接影响一次滑动之后最长可以滚多远
-             * @property maxSpeed
-             * @public
-             * @since 3.1.0
-             * @default 100
-             * @type {number}
-             */
-            _this.maxSpeed = 15;
-            /**
-             * 松开手指后的自然滚动的摩擦力，摩擦力越大，停止的越快
-             * @property fSpeed
-             * @since 3.1.0
-             * @type {number}
-             */
-            _this.fSpeed = 0.1;
-            _this._isMouseDownState = 0;
-            _this._moveDis = 0;
-            /**
-             * 是否允许通过鼠标去滚动
-             * @property isCanScroll
-             * @type {boolean}
-             * @since 3.0.1
-             */
-            _this.isCanScroll = true;
-            _this._isStop = false;
-            _this._stage = null;
-            _this._maxDis = 1;
-            //最后鼠标经过的坐标值
-            _this._lastValue = 0;
-            _this._frame = 1;
-            _this.mouseEvent = null;
+    var ScrollList = /** @class */ (function (_super) {
+        __extends(ScrollList, _super);
+        /**
+         * 构造函数
+         * @method ScrollList
+         * @param {Class} itemClassName 可以做为Item的类
+         * @param {number} itemWidth item宽
+         * @param {number} itemHeight item高
+         * @param {number} viewWidth 列表的宽
+         * @param {number} viewHeight 列表的高
+         * @param {boolean} isVertical 是横向滚动还是纵向滚动 默认是纵向
+         * @param {number} step 纵向就是分几列，横向就是分几行，默认是1列或者1行
+         * @since 1.0.9
+         */
+        function ScrollList(itemClassName, itemWidth, itemHeight, viewWidth, viewHeight, isVertical, step) {
+            if (isVertical === void 0) { isVertical = true; }
+            if (step === void 0) { step = 1; }
+            var _this = _super.call(this, null, viewWidth, viewHeight, viewWidth, viewHeight) || this;
+            _this._items = null;
+            _this._isInit = 0;
+            _this.data = [];
+            _this.downL = null;
+            _this._lastFirstId = -1;
+            _this._distance = 0;
+            _this._paramXY = "y";
+            _this._isVertical = true;
+            _this._maxDistance = 0;
             var s = _this;
-            s._instanceType = "annieUI.Scroller";
+            s._instanceType = "annieUI.ScrollList";
+            s._itemW = itemWidth;
+            s._itemH = itemHeight;
+            s._items = [];
+            s._itemClass = itemClassName;
+            s._itemCount = 0;
+            s._cols = step;
+            s.isVertical = isVertical;
+            s.addEventListener(annie.Event.ENTER_FRAME, s.flushData.bind(s));
             return _this;
         }
+        Object.defineProperty(ScrollList.prototype, "isVertical", {
+            get: function () {
+                return this._isVertical;
+            },
+            set: function (value) {
+                var s = this;
+                s._isVertical = value;
+                s._updateItems();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ScrollList.prototype, "loadingView", {
+            /**
+             * 获取下拉滚动的loadingView对象
+             * @property loadingView
+             * @since 1.0.9
+             * @return {DisplayObject}
+             */
+            get: function () {
+                return this.downL;
+            },
+            enumerable: true,
+            configurable: true
+        });
         /**
-         * 初始化函数
-         * @method  ScrollPage
-         * @param {annie.Stage} Stage
-         * @param {number} maxDis
-         * @param {boolean} isVertical 是纵向还是横向，也就是说是滚x还是滚y,默认值为沿y方向滚动
+         * 更新列表数据
+         * @method updateData
+         * @param {Array} data
+         * @param {boolean} isReset 是否重置数据列表。
+         * @since 1.0.9
          */
-        Scroller.prototype.init = function (stage, maxDis, isVertical) {
-            if (isVertical === void 0) { isVertical = true; }
+        ScrollList.prototype.updateData = function (data, isReset) {
+            if (isReset === void 0) { isReset = false; }
             var s = this;
-            s.mouseEvent = s.onMouseEvent.bind(s);
-            s._stage = stage;
-            s._maxDis = maxDis;
-            stage.addEventListener(annie.MouseEvent.MOUSE_DOWN, s.mouseEvent, false);
-            stage.addEventListener(annie.MouseEvent.MOUSE_MOVE, s.mouseEvent, false);
-            stage.addEventListener(annie.MouseEvent.MOUSE_UP, s.mouseEvent, false);
-            stage.addEventListener(annie.MouseEvent.MOUSE_OUT, s.mouseEvent);
-            s._timer = new annie.Timer(20);
-            s._timer.addEventListener(annie.Event.TIMER, function () {
-                if (s._isStop) {
-                    var frame = s._frame;
-                    if (Math.abs(frame - s._moveDis) > 0.001) {
-                        frame += s.fSpeed * (s._moveDis - frame);
-                        if (frame < 1) {
-                            frame = 1;
-                            s._isStop = true;
-                        }
-                        else if (frame > s._maxDis) {
-                            frame = s._maxDis;
-                            s._isStop = true;
-                        }
-                        s.dispatchEvent("onScrollIng", frame);
-                        s._frame = frame;
-                    }
-                    else {
-                        s._isStop = false;
-                    }
-                }
-            });
-            s._timer.start();
-        };
-        Scroller.prototype.onMouseEvent = function (e) {
-            var s = this;
-            if (s.isCanScroll) {
-                var frame = s._frame;
-                var moveDis = s._moveDis;
-                if (e.type == annie.MouseEvent.MOUSE_DOWN) {
-                    if (s.isVertical) {
-                        s._lastValue = e.localY;
-                    }
-                    else {
-                        s._lastValue = e.localX;
-                    }
-                    moveDis = 0;
-                    s._isMouseDownState = 1;
-                    s._isStop = false;
-                }
-                else if (e.type == annie.MouseEvent.MOUSE_MOVE) {
-                    if (s._isMouseDownState < 1) {
-                        return;
-                    }
-                    s._isMouseDownState = 2;
-                    var currentValue = void 0;
-                    if (s.isVertical) {
-                        currentValue = e.localY;
-                    }
-                    else {
-                        currentValue = e.localX;
-                    }
-                    moveDis = s._lastValue - currentValue;
-                    if (moveDis > s.maxSpeed) {
-                        moveDis = s.maxSpeed;
-                    }
-                    else if (moveDis < -s.maxSpeed) {
-                        moveDis = -s.maxSpeed;
-                    }
-                    if (moveDis != 0) {
-                        frame += moveDis * s.speed;
-                        if (frame < 1) {
-                            frame = 1;
-                        }
-                        else if (frame > s._maxDis) {
-                            frame = s._maxDis;
-                        }
-                        s._frame = frame;
-                        //触发事件
-                        s.dispatchEvent("onScrollIng", s._frame);
-                    }
-                    s._lastValue = currentValue;
+            if (data) {
+                if (!s._isInit || isReset) {
+                    s.data = data;
                 }
                 else {
-                    moveDis *= 6;
-                    moveDis += s._frame;
-                    if (moveDis < 1) {
-                        moveDis = 1;
-                    }
-                    else if (moveDis > s._maxDis) {
-                        moveDis = s._maxDis;
-                    }
-                    s._isMouseDownState = 0;
-                    s._isStop = true;
+                    s.data = s.data.concat(data);
                 }
-                s._moveDis = moveDis;
+                s._isInit = 1;
+            }
+            s._lastFirstId = -1;
+            s._maxDistance = Math.ceil(s.data.length / s._cols) * s._itemRow;
+            if (s.downL) {
+                s.downL[s._paramXY] = Math.max(s._distance, s._maxDistance);
+                var wh = s.downL.getWH();
+                s._maxDistance += (s._paramXY == "x" ? wh.width : wh.height);
+            }
+            s.resetMaxDistance();
+        };
+        ScrollList.prototype.resetMaxDistance = function () {
+            var s = this;
+            if (s._isVertical) {
+                s.scroller._scrollHeight = s._maxDistance;
+            }
+            else {
+                s.scroller._scrollWidth = s._maxDistance;
+            }
+            s.scroller._updateViewAndScroll();
+        };
+        ScrollList.prototype.flushData = function () {
+            var s = this;
+            if (s._isInit > 0) {
+                var id = (Math.abs(Math.floor(s._view[s._paramXY] / s._itemRow)) - 1) * s._cols;
+                id = id < 0 ? 0 : id;
+                if (id != s._lastFirstId) {
+                    s._lastFirstId = id;
+                    if (id != s._items[0].id) {
+                        for (var r = 0; r < s._cols; r++) {
+                            if (s.speed > 0) {
+                                s._items.unshift(s._items.pop());
+                            }
+                            else {
+                                s._items.push(s._items.shift());
+                            }
+                        }
+                    }
+                }
+                for (var i = 0; i < s._itemCount; i++) {
+                    var item = s._items[i];
+                    if (s._isInit == 1) {
+                        item._a2x_sl_id = -1;
+                    }
+                    if (item._a2x_sl_id != id) {
+                        item.initData(s.data[id] ? id : -1, s.data[id]);
+                        item[s._paramXY] = Math.floor(id / s._cols) * s._itemRow;
+                        item[s._disParam] = (id % s._cols) * s._itemCol;
+                        //如果没有数据则隐藏
+                        if (s.data[id]) {
+                            item._a2x_sl_id = id;
+                            item.visible = true;
+                        }
+                        else {
+                            item._a2x_sl_id = -1;
+                            item.visible = false;
+                        }
+                    }
+                    id++;
+                }
+                s._isInit = 2;
             }
         };
-        Scroller.prototype.destroy = function () {
+        ScrollList.prototype._updateItems = function () {
             var s = this;
-            s._stage.removeEventListener(annie.MouseEvent.MOUSE_MOVE, s.mouseEvent, false);
-            s._stage.removeEventListener(annie.MouseEvent.MOUSE_UP, s.mouseEvent, false);
-            s._stage.removeEventListener(annie.MouseEvent.MOUSE_DOWN, s.mouseEvent, false);
-            s._stage.removeEventListener(annie.MouseEvent.MOUSE_OUT, s.mouseEvent);
-            s._timer.stop();
-            s._timer.destroy();
-            s._timer = null;
+            if (s._isVertical) {
+                s._disParam = "x";
+                s._paramXY = "y";
+                s._itemRow = s._itemH;
+                s._itemCol = s._itemW;
+                s._distance = s._scroller.viewHeight;
+            }
+            else {
+                s._disParam = "y";
+                s._paramXY = "x";
+                s._itemRow = s._itemW;
+                s._itemCol = s._itemH;
+                s._distance = s._scroller.viewWidth;
+            }
+            var newCount = (Math.ceil(s._distance / s._itemRow) + 1) * s._cols;
+            if (newCount != s._itemCount) {
+                if (newCount > s._itemCount) {
+                    for (var i = s._itemCount; i < newCount; i++) {
+                        var item = new s._itemClass();
+                        item.id = -1;
+                        item.data = null;
+                        s._items.push(item);
+                        s._view.addChild(item);
+                    }
+                }
+                else {
+                    for (var i = 0; i < s._itemCount - newCount; i++) {
+                        s._view.removeChild(s._items.pop());
+                    }
+                }
+                s._itemCount = newCount;
+                s._lastFirstId = -1;
+            }
+        };
+        /**
+         * 设置加载数据时显示的loading对象
+         * @since 1.0.9
+         * @method setLoading
+         * @param {annie.DisplayObject} downLoading
+         */
+        ScrollList.prototype.setLoading = function (downLoading) {
+            var s = this;
+            if (s.downL) {
+                s._view.removeChild(s.downL);
+                var wh = s.downL.getWH();
+                s._maxDistance -= (s._paramXY == "x" ? wh.width : wh.height);
+                s.downL = null;
+            }
+            if (downLoading) {
+                s.downL = downLoading;
+                s._view.addChild(downLoading);
+                s.downL[s._paramXY] = Math.max(s._distance, s._maxDistance);
+                var wh = s.downL.getWH();
+                s._maxDistance += (s._paramXY == "x" ? wh.width : wh.height);
+            }
+            else {
+                s.isStop = false;
+            }
+            s.resetMaxDistance();
+        };
+        ScrollList.prototype.destroy = function () {
+            var s = this;
+            s._items = null;
+            s._itemClass = null;
+            s.data = null;
+            s.downL = null;
             _super.prototype.destroy.call(this);
         };
-        return Scroller;
-    }(annie.EventDispatcher));
-    annieUI.Scroller = Scroller;
+        return ScrollList;
+    }(annieUI.ScrollPage));
+    annieUI.ScrollList = ScrollList;
 })(annieUI || (annieUI = {}));
 /**
  * @module annieUI
@@ -698,7 +1131,6 @@ var annieUI;
             var s = _this;
             s._instanceType = "annieUI.FacePhoto";
             s.photo = new Image();
-            s.photo.crossOrigin = "";
             s.maskObj = new annie.Shape();
             s.photo.onload = function (e) {
                 s.bitmap = new annie.Bitmap(s.photo);
@@ -733,6 +1165,8 @@ var annieUI;
         FacePhoto.prototype.init = function (src, w, h, maskType) {
             if (maskType === void 0) { maskType = 0; }
             var s = this;
+            s._bounds.width = w;
+            s._bounds.height = h;
             s.radioW = w;
             s.radioH = h;
             if (w > h) {
@@ -741,6 +1175,7 @@ var annieUI;
             else {
                 s.radio = h;
             }
+            s.photo.corssOrigin = "anonymous";
             if (s.photo.src != src)
                 s.photo.src = src;
             if (s.maskType != maskType)
@@ -1092,7 +1527,12 @@ var annieUI;
                     }
                     else {
                         if (Math.abs(s._moveDis) > 5 || Math.abs(ts * s.follow << 1) >= s.distance) {
-                            s.slideTo(ts < 0 ? id + 1 : id - 1);
+                            if (ts != 0) {
+                                s.slideTo(ts < 0 ? id + 1 : id - 1);
+                            }
+                            else {
+                                s.view[s.paramXY] = -s.currentPageIndex * s.distance;
+                            }
                         }
                         else {
                             var where = -s.currentPageIndex * s.distance;
@@ -1231,6 +1671,13 @@ var annieUI;
     var Event = annie.Event;
     var MouseEvent = annie.MouseEvent;
     var Point = annie.Point;
+    /**
+     * 电子杂志组件
+     * @class annieUI.FlipBook
+     * @public
+     * @extends annie.Sprite
+     * @since 1.0.0
+     */
     var FlipBook = /** @class */ (function (_super) {
         __extends(FlipBook, _super);
         /**
@@ -1816,218 +2263,6 @@ var annieUI;
 var annieUI;
 (function (annieUI) {
     /**
-     * 有些时候需要大量的有规则的滚动内容。这个时候就应该用到这个类了
-     * @class annieUI.ScrollList
-     * @public
-     * @extends annieUI.ScrollPage
-     * @since 1.0.9
-     */
-    var ScrollList = /** @class */ (function (_super) {
-        __extends(ScrollList, _super);
-        /**
-         * 构造函数
-         * @method ScrollList
-         * @param {Class} itemClassName 可以做为Item的类
-         * @param {number} itemWidth item宽
-         * @param {number} itemHeight item高
-         * @param {number} vW 列表的宽
-         * @param {number} vH 列表的高
-         * @param {boolean} isVertical 是横向滚动还是纵向滚动 默认是纵向
-         * @param {number} cols 分几列，默认是1列
-         * @since 1.0.9
-         */
-        function ScrollList(itemClassName, itemWidth, itemHeight, vW, vH, isVertical, cols) {
-            if (isVertical === void 0) { isVertical = true; }
-            if (cols === void 0) { cols = 1; }
-            var _this = _super.call(this, vW, vH, 0, isVertical) || this;
-            _this._items = null;
-            _this._isInit = 0;
-            _this.data = [];
-            _this.downL = null;
-            _this._lastFirstId = -1;
-            var s = _this;
-            s._instanceType = "annieUI.ScrollList";
-            s._itemW = itemWidth;
-            s._itemH = itemHeight;
-            s._items = [];
-            s._itemClass = itemClassName;
-            s._itemCount = 0;
-            s._cols = cols;
-            s._updateViewRect();
-            s.addEventListener(annie.Event.ENTER_FRAME, s.flushData.bind(s));
-            return _this;
-        }
-        Object.defineProperty(ScrollList.prototype, "loadingView", {
-            /**
-             * 获取下拉滚动的loadingView对象
-             * @property loadingView
-             * @since 1.0.9
-             * @return {DisplayObject}
-             */
-            get: function () {
-                return this.downL;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        /**
-         * 更新列表数据
-         * @method updateData
-         * @param {Array} data
-         * @param {boolean} isReset 是否重置数据列表。
-         * @since 1.0.9
-         */
-        ScrollList.prototype.updateData = function (data, isReset) {
-            if (isReset === void 0) { isReset = false; }
-            var s = this;
-            if (!s._isInit || isReset) {
-                s.data = data;
-            }
-            else {
-                s.data = s.data.concat(data);
-            }
-            s._isInit = 1;
-            s._lastFirstId = -1;
-            s.maxDistance = Math.ceil(s.data.length / s._cols) * s._itemRow;
-            if (s.downL) {
-                s.downL[s.paramXY] = Math.max(s.distance, s.maxDistance);
-                var wh = s.downL.getWH();
-                s.maxDistance += (s.paramXY == "x" ? wh.width : wh.height);
-            }
-        };
-        ScrollList.prototype.flushData = function () {
-            var s = this;
-            if (s._isInit > 0) {
-                var id = (Math.abs(Math.floor(s.view[s.paramXY] / s._itemRow)) - 1) * s._cols;
-                id = id < 0 ? 0 : id;
-                if (id != s._lastFirstId) {
-                    s._lastFirstId = id;
-                    if (id != s._items[0].id) {
-                        for (var r = 0; r < s._cols; r++) {
-                            if (s.speed > 0) {
-                                s._items.unshift(s._items.pop());
-                            }
-                            else {
-                                s._items.push(s._items.shift());
-                            }
-                        }
-                    }
-                }
-                for (var i = 0; i < s._itemCount; i++) {
-                    var item = s._items[i];
-                    if (s._isInit == 1) {
-                        item._a2x_sl_id = -1;
-                    }
-                    if (item._a2x_sl_id != id) {
-                        item.initData(s.data[id] ? id : -1, s.data[id]);
-                        item[s.paramXY] = Math.floor(id / s._cols) * s._itemRow;
-                        item[s._disParam] = (id % s._cols) * s._itemCol;
-                        //如果没有数据则隐藏
-                        if (s.data[id]) {
-                            item._a2x_sl_id = id;
-                            item.visible = true;
-                        }
-                        else {
-                            item._a2x_sl_id = -1;
-                            item.visible = false;
-                        }
-                    }
-                    id++;
-                }
-                s._isInit = 2;
-            }
-        };
-        /**
-         * 设置可见区域，可见区域的坐标始终在本地坐标中0,0点位置
-         * @method setViewRect
-         * @param {number}w 设置可见区域的宽
-         * @param {number}h 设置可见区域的高
-         * @param {boolean} isVertical 方向
-         * @public
-         * @since 1.1.1
-         */
-        ScrollList.prototype.setViewRect = function (w, h, isVertical) {
-            _super.prototype.setViewRect.call(this, w, h, isVertical);
-            var s = this;
-            if (s._itemRow && s._itemCol) {
-                s._updateViewRect();
-            }
-        };
-        ScrollList.prototype._updateViewRect = function () {
-            var s = this;
-            if (s.isVertical) {
-                s._disParam = "x";
-                s._itemRow = s._itemH;
-                s._itemCol = s._itemW;
-            }
-            else {
-                s._disParam = "y";
-                s._itemRow = s._itemW;
-                s._itemCol = s._itemH;
-            }
-            var newCount = (Math.ceil(s.distance / s._itemRow) + 1) * s._cols;
-            if (newCount != s._itemCount) {
-                if (newCount > s._itemCount) {
-                    for (var i = s._itemCount; i < newCount; i++) {
-                        var item = new s._itemClass();
-                        item.id = -1;
-                        item.data = null;
-                        s._items.push(item);
-                        s.view.addChild(item);
-                    }
-                }
-                else {
-                    for (var i = 0; i < s._itemCount - newCount; i++) {
-                        s.view.removeChild(s._items.pop());
-                    }
-                }
-                s._itemCount = newCount;
-                s._lastFirstId = -1;
-            }
-        };
-        /**
-         * 设置加载数据时显示的loading对象
-         * @since 1.0.9
-         * @method setLoading
-         * @param {annie.DisplayObject} downLoading
-         */
-        ScrollList.prototype.setLoading = function (downLoading) {
-            var s = this;
-            if (s.downL) {
-                s.view.removeChild(s.downL);
-                var wh = s.downL.getWH();
-                s.maxDistance -= (s.paramXY == "x" ? wh.width : wh.height);
-                s.downL = null;
-            }
-            if (downLoading) {
-                s.downL = downLoading;
-                s.view.addChild(downLoading);
-                s.downL[s.paramXY] = Math.max(s.distance, s.maxDistance);
-                var wh = s.downL.getWH();
-                s.maxDistance += (s.paramXY == "x" ? wh.width : wh.height);
-            }
-            else {
-                s.isStop = false;
-            }
-        };
-        ScrollList.prototype.destroy = function () {
-            var s = this;
-            s._items = null;
-            s._itemClass = null;
-            s.data = null;
-            s.downL = null;
-            _super.prototype.destroy.call(this);
-        };
-        return ScrollList;
-    }(annieUI.ScrollPage));
-    annieUI.ScrollList = ScrollList;
-})(annieUI || (annieUI = {}));
-/**
- * @module annieUI
- */
-var annieUI;
-(function (annieUI) {
-    /**
      * <h4><font color="red">小游戏不支持 小程序不支持</font></h4>
      * 画板类
      * @class annieUI.DrawingBoard
@@ -2084,7 +2319,7 @@ var annieUI;
             _this.currentStepId = 0;
             var s = _this;
             s._instanceType = "annieUI.DrawingBoard";
-            s.context = s.bitmapData.getContext('2d');
+            s.context = s._texture.getContext('2d');
             s.context.lineCap = "round";
             s.context.lineJoin = "round";
             s.reset(bgColor);
@@ -2152,12 +2387,17 @@ var annieUI;
         DrawingBoard.prototype.onMouseMove = function (e) {
             var s = this;
             if (s._isMouseDown) {
-                var ctx = s.context;
-                var lx = e.localX >> 0;
-                var ly = e.localY >> 0;
-                ctx.lineTo(lx, ly);
-                ctx.stroke();
-                s.addStepObj.ps.push(lx, ly);
+                if (s.addStepObj) {
+                    var ctx = s.context;
+                    var lx = e.localX >> 0;
+                    var ly = e.localY >> 0;
+                    ctx.lineTo(lx, ly);
+                    ctx.stroke();
+                    s.addStepObj.ps.push(lx, ly);
+                }
+                else {
+                    s.onMouseDown(e);
+                }
             }
         };
         ;
@@ -2176,13 +2416,12 @@ var annieUI;
             }
             if (s.bgColor != "") {
                 s.context.fillStyle = s.bgColor;
-                s.context.fillRect(0, 0, s.bitmapData.width, s.bitmapData.height);
             }
-            else {
-                s.context.clearRect(0, 0, s.bitmapData.width, s.bitmapData.height);
-            }
+            s.context.fillRect(0, 0, s._bitmapData.width, s._bitmapData.height);
             s.currentStepId = 0;
             s.totalStepList = [];
+            s.addStepObj = null;
+            s._isMouseDown = false;
         };
         /**
          * 撤销步骤
@@ -2265,7 +2504,7 @@ var annieUI;
          */
         /**
          * 构造函数
-         * 请监听 "onDrawTime"事件来判断刮完多少百分比了。
+         * 请监听 annie.Event.ON_DRAW_PERCENT事件来判断刮完多少百分比了。
          * @method ScratchCard
          * @param width 宽
          * @param height 高
@@ -2293,7 +2532,7 @@ var annieUI;
                         s._currentDraw++;
                         //抛事件
                         var per = Math.floor(s._currentDraw / s._totalDraw * 100);
-                        s.dispatchEvent("onDrawTime", { per: per });
+                        s.dispatchEvent("onDrawPercent", { per: per });
                     }
                 }
             });
@@ -2302,21 +2541,23 @@ var annieUI;
         /**
          * 重置刮刮卡
          * @method reset
-         * @param backColorObj 要更换的被刮出来的图片,不赋值的话默认之前设置的
+         * @param frontColorObj 没刮开之前的图，可以为单色，也可以为位图填充。赋值为""会用之前已设置的
+         * @param backColorObj 被刮开之后的图，可以为单色，也可以为位图填充。赋值为""会用之前已设置的
          * @since 1.1.1
          * @public
          */
-        ScratchCard.prototype.reset = function (backColorObj) {
+        ScratchCard.prototype.reset = function (frontColorObj, backColorObj) {
+            if (frontColorObj === void 0) { frontColorObj = ""; }
             if (backColorObj === void 0) { backColorObj = ""; }
-            _super.prototype.reset.call(this, backColorObj);
+            _super.prototype.reset.call(this, frontColorObj);
             var s = this;
             if (s._drawList) {
                 if (backColorObj != "") {
                     s.drawColor = backColorObj;
                 }
                 s._currentDraw = 0;
-                var dw = Math.floor(s._bounds.width / s._drawRadius);
-                var dh = Math.floor(s._bounds.height / s._drawRadius);
+                var dw = Math.floor(s._bitmapData.width / s._drawRadius);
+                var dh = Math.floor(s._bitmapData.height / s._drawRadius);
                 s._totalDraw = dw * dh;
                 for (var i = 0; i < dw; i++) {
                     s._drawList[i] = [];
@@ -2343,8 +2584,8 @@ var annieUI;
             set: function (value) {
                 var s = this;
                 s._drawRadius = value;
-                var dw = Math.floor(s._bounds.width / s._drawRadius);
-                var dh = Math.floor(s._bounds.height / s._drawRadius);
+                var dw = Math.floor(s._bitmapData.width / s._drawRadius);
+                var dh = Math.floor(s._bitmapData.height / s._drawRadius);
                 s._totalDraw = dw * dh;
                 for (var i = 0; i < dw; i++) {
                     s._drawList[i] = [];

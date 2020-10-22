@@ -44,7 +44,7 @@ namespace annie {
             }
             let s=this;
             s._delay=delay;
-            s._frameDelay=Math.ceil(delay*0.06);
+            s._frameDelay=Math.ceil(delay*0.001*Stage._FPS);
             s._repeatCount=repeatCount;
             Timer._timerList.push(s);
         }
@@ -107,7 +107,7 @@ namespace annie {
         }
         public set delay(value:number){
             this._delay=value;
-            this._frameDelay=Math.ceil(value*0.001*60);
+            this._frameDelay=Math.ceil(value*0.001*Stage._FPS);
         }
         private _delay:number=0;
         private _frameDelay:number=0;
@@ -149,9 +149,9 @@ namespace annie {
          * @since 1.0.9
          */
         public kill():void{
-            var len=Timer._timerList.length;
-            var s:any=this;
-            for(var i=0;i<len;i++){
+            let len=Timer._timerList.length;
+            let s:any=this;
+            for(let i=0;i<len;i++){
                 if(Timer._timerList[i]._instanceId==s._instanceId){
                     Timer._timerList.splice(i,1);
                     break;
@@ -180,7 +180,7 @@ namespace annie {
         private static _timerList:Array<any>=[];
         private static flush():void{
             var len=Timer._timerList.length;
-            for(var i=len-1;i>=0;i--){
+            for(let i=len-1;i>=0;i--){
                 if(Timer._timerList[i] ) {
                     Timer._timerList[i].update();
                 }else{

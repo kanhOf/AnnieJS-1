@@ -82,8 +82,10 @@ namespace annie {
             s.htmlElement.style.outline = "none";
             s.htmlElement.style.borderWidth = "thin";
             s.htmlElement.style.borderColor = "#000";
+            s.htmlElement.style.padding=0;
+            s.htmlElement.style.margin=0;
             s.htmlElement.onblur = function (){
-                document.body.scrollTop = 0;
+                window.scrollTo(0,0);
             };
         }
         /**
@@ -111,8 +113,8 @@ namespace annie {
             /////////////////////设置边框//////////////
             s.border = showBorder;
             //color:blue; text-align:center"
-            if (s.inputType == 2) {
-                s.htmlElement.style.lineHeight = lineHeight + "px";
+            if (s.inputType != 2) {
+                s.lineHeight = lineHeight;
             }
         }
 
@@ -215,6 +217,9 @@ namespace annie {
          */
         public set textHeight(value: number) {
             this.htmlElement.style.height = value+"px";
+            if(this.inputType!=2){
+                this.htmlElement.style.lineHeight = value+"px";
+            }
         }
 
         public get textHeight(): number {
@@ -243,7 +248,7 @@ namespace annie {
          * @since 1.0.3
          */
         public set color(value: string) {
-            var ss = this.htmlElement.style;
+            let ss = this.htmlElement.style;
             ss.color = value;
         }
 

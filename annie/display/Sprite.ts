@@ -23,7 +23,9 @@ namespace annie {
             super();
             let s = this;
             s._instanceType = "annie.Sprite";
+            s.hitTestWithPixel = true;
         }
+
         public destroy(): void {
             let s: any = this;
             //让子级也destroy
@@ -32,10 +34,21 @@ namespace annie {
             }
             if (s.parent instanceof annie.Sprite) Sprite._removeFormParent(s.parent, s);
             s.children = null;
-            s._hitArea=null;
+            s._hitArea = null;
             super.destroy();
         }
 
+        /**
+         * 容器类所有动画的播放速度，默认是1.如果有嵌套的话，速度相乘；
+         * @property mcSpeed
+         * @public
+         * @type {number}
+         * @since 3.1.5
+         * @default 1
+         *
+         */
+        public mcSpeed: number = 1;
+        protected _cMcSpeed: number = 1;
         /**
          * 是否可以让children接收鼠标事件
          * 鼠标事件将不会往下冒泡
@@ -56,6 +69,7 @@ namespace annie {
          * @readonly
          */
         public children: DisplayObject[] = [];
+
         /**
          * 添加一个显示对象到Sprite
          * @method addChild
@@ -67,6 +81,7 @@ namespace annie {
         public addChild(child: DisplayObject): void {
             this.addChildAt(child, this.children.length);
         }
+
         /**
          * 从Sprite中移除一个child
          * @method removeChild
@@ -85,6 +100,7 @@ namespace annie {
                 }
             }
         }
+
         //全局遍历查找
         private static _getElementsByName(rex: RegExp, root: annie.Sprite, isOnlyOne: boolean, isRecursive: boolean, resultList: Array<annie.DisplayObject>): void {
             let len = root.children.length;
@@ -97,7 +113,7 @@ namespace annie {
                     if (name && name != "") {
                         if (rex.test(name)) {
                             resultList[resultList.length] = child;
-                            if (isOnlyOne){
+                            if (isOnlyOne) {
                                 return;
                             }
                         }
@@ -110,6 +126,7 @@ namespace annie {
                 }
             }
         }
+
         /**
          * 通过给displayObject设置的名字来获取一个child,可以使用正则匹配查找
          * @method getChildByName
@@ -124,7 +141,7 @@ namespace annie {
             if (!name) return null;
             let s = this;
             let rex: any;
-            if (typeof(name) == "string") {
+            if (typeof (name) == "string") {
                 rex = new RegExp("^" + name + "$");
             } else {
                 rex = name;
@@ -157,6 +174,7 @@ namespace annie {
             let cp = child.parent;
             if (cp instanceof annie.Sprite) {
                 Sprite._removeFormParent(cp, child);
+                cp.a2x_uf = true;
             }
             len = s.children.length;
             if (index >= len) {
@@ -174,7 +192,9 @@ namespace annie {
                     child._onAddEvent();
                 }
             }
+            s.a2x_uf = true;
         }
+
         private static _removeFormParent(cp: Sprite, child: DisplayObject): void {
             let cpc = cp.children;
             let len = cpc.length;
@@ -185,6 +205,7 @@ namespace annie {
                 }
             }
         }
+
         /**
          * 获取Sprite中指定层级一个child
          * @method getChildAt
@@ -209,7 +230,7 @@ namespace annie {
          * @since 1.0.2
          * @return {number}
          */
-        public getChildIndex(child: DisplayObject): number{
+        public getChildIndex(child: DisplayObject): number {
             let s = this;
             let len = s.children.length;
             for (let i: number = 0; i < len; i++) {
@@ -233,12 +254,12 @@ namespace annie {
             let id1 = -1;
             let id2 = -1;
             let childCount = s.children.length;
-            if (typeof(child1) == "number") {
+            if (typeof (child1) == "number") {
                 id1 = child1;
             } else {
                 id1 = s.getChildIndex(child1);
             }
-            if (typeof(child2) == "number"){
+            if (typeof (child2) == "number") {
                 id2 = child2;
             } else {
                 id2 = s.getChildIndex(child2);
@@ -273,12 +294,24 @@ namespace annie {
             } else {
                 child = s.children.splice(index, 1)[0];
             }
-            if(s._isOnStage&&child._isOnStage){
+            if (s._isOnStage && child._isOnStage) {
                 child._onRemoveEvent(false);
-                child.stage=null;
+                child.stage = null;
             }
-            child.parent=null;
+            child.parent = null;
+            s.a2x_uf = true;
         }
+
+        /**
+         * 如果对容器缓存为位图过,则会更新缓存,没事别乱调用
+         * @method updateCache
+         * @since 3.2.0
+         * @return {void}
+         */
+        public updateCache(): void {
+            this.a2x_uf = true;
+        }
+
         /**
          * 移除Sprite上的所有child
          * @method removeAllChildren
@@ -294,50 +327,45 @@ namespace annie {
             }
         }
         public hitTestPoint(hitPoint: Point, isGlobalPoint: boolean = false): DisplayObject {
-            let s = this;
-            if (!s.visible || !s.mouseEnable) return null;
-            //如果有设置鼠标活动区域，则优先使用活动区域
-            if(s._hitArea instanceof annie.Rectangle){
-                let p: Point=hitPoint;
-                if (isGlobalPoint) {
-                    p = s.globalToLocal(hitPoint, DisplayObject._bp);
-                }
-                p.x += s._offsetX;
-                p.y += s._offsetY;
-                if (s._hitArea.isPointIn(p)) {
-                    return s;
-                }
-                return null;
+            let s: any = this;
+            if (!s._visible || !s.mouseEnable) return null;
+            if (s._isCache || s._hitArea) {
+                return super.hitTestPoint(hitPoint, isGlobalPoint);
+            }
+            let p: Point = hitPoint;
+            if (!isGlobalPoint) {
+                p = s.localToGlobal(hitPoint, new Point());
             }
             let len = s.children.length;
             let hitDisplayObject: DisplayObject;
             let child: any;
-            let maskObjList:any={};
+            let maskObjList: any = {};
             //这里特别注意是从上往下遍历
             for (let i = len - 1; i >= 0; i--) {
                 child = s.children[i];
                 if (child._isUseToMask > 0) continue;
-                if (child.mask!=void 0){
-                    if(maskObjList[child.mask._instanceId]!=void 0){
+                if (child.mask != void 0) {
+                    if (maskObjList[child.mask._instanceId] == void 0) {
                         //看看点是否在遮罩内
-                        if (child.mask.hitTestPoint(hitPoint, isGlobalPoint)){
+                        if (child.mask.hitTestPoint(p, true)) {
                             //如果都不在遮罩里面,那还检测什么直接检测下一个
-                            maskObjList[child.mask._instanceId]=true;
-                        }else{
-                            maskObjList[child.mask._instanceId]=false;
+                            maskObjList[child.mask._instanceId] = true;
+                        } else {
+                            maskObjList[child.mask._instanceId] = false;
                         }
                     }
-                    if(maskObjList[child.mask._instanceId]==false){
+                    if (maskObjList[child.mask._instanceId] == false) {
                         continue;
                     }
                 }
-                hitDisplayObject = child.hitTestPoint(hitPoint, isGlobalPoint);
-                if (hitDisplayObject instanceof annie.DisplayObject) {
+                hitDisplayObject = child.hitTestPoint(p, true);
+                if (hitDisplayObject) {
                     return hitDisplayObject;
                 }
             }
             return null;
         }
+
         public getBounds(): Rectangle {
             let s = this;
             let rect: Rectangle = s._bounds;
@@ -349,77 +377,76 @@ namespace annie {
             if (len > 0) {
                 for (let i = 0; i < len; i++) {
                     if (children[i].visible && children[i]._isUseToMask == 0)
-                        children[i].getTransformRect();
-                        Rectangle.createFromRects(rect,DisplayObject._transformRect);
+                        children[i].getDrawRect();
+                    Rectangle.createFromRects(rect, DisplayObject._transformRect);
                 }
             }
             return rect;
         }
-        public updateMatrix(): void {
+
+        protected _onUpdateMatrixAndAlpha(): void {
             let s = this;
-            if (!s._visible) return;
-            super.updateMatrix();
-            let children: any = s.children;
-            let len: number = children.length;
-            for (let i = 0; i < len; i++) {
-                children[i].updateMatrix();
-            }
-            s.a2x_ua = false;
-            s.a2x_uf = false;
-            s.a2x_um = false;
-        }
-        public render(renderObj: IRender): void {
-            let s: any = this;
-            if (!s._visible) return;
-            let maskObj: any;
-            let child: any;
-            let children: any = s.children;
-            let len: number = children.length;
-            for (let i = 0; i < len; i++) {
-                child = children[i];
-                if (child._isUseToMask > 0) continue;
-                if (maskObj instanceof annie.DisplayObject) {
-                    if (child.mask instanceof annie.DisplayObject && child.mask.parent == child.parent) {
-                        if (child.mask != maskObj){
-                            renderObj.endMask();
-                            maskObj = child.mask;
-                            renderObj.beginMask(maskObj);
-                        }
-                    } else {
-                        renderObj.endMask();
-                        maskObj = null;
-                    }
-                } else {
-                    if (child.mask instanceof annie.DisplayObject && child.mask.parent == child.parent) {
-                        maskObj = child.mask;
-                        renderObj.beginMask(maskObj);
-                    }
+            if (s._visible) {
+                super._onUpdateMatrixAndAlpha();
+                let children: any = s.children;
+                let len: number = children.length;
+                for (let i = 0; i < len; i++) {
+                    children[i]._onUpdateMatrixAndAlpha();
                 }
-                child.render(renderObj);
-            }
-            if (maskObj instanceof annie.DisplayObject) {
-                renderObj.endMask();
+                if (s.a2x_um) {
+                    s._needCheckDrawBounds = true;
+                }
+                s.a2x_ua = false;
+                s.a2x_um = false;
             }
         }
-        public _onRemoveEvent(isReSetMc:boolean):void{
+        public _onUpdateTexture(): void {
+            let s: any = this;
+            if(s._isCache&&!s.a2x_uf){
+               //空着
+            }else{
+                let children: any = s.children;
+                let len: number = children.length;
+                for (let i = 0; i < len; i++) {
+                    children[i]._onUpdateTexture();
+                }
+            }
+            if (s.a2x_uf) {
+                s.a2x_uf = false;
+                s._texture=null;
+                if (s._isCache) {
+                    annie.createCache(s);
+                    s._updateSplitBounds();
+                }else{
+                    s._offsetX = 0;
+                    s._offsetY = 0;
+                }
+            }
+            if (s._needCheckDrawBounds) {
+                s._checkDrawBounds();
+            }
+        }
+        public _onRemoveEvent(isReSetMc: boolean): void {
             let s = this;
             let child: any = null;
+            //这里用concat 隔离出一个新的children是非常重要的一步
             let children = s.children.concat();
-            let len =children.length;
-            for (let i = len - 1; i >= 0; i--){
+            let len = children.length;
+            for (let i = len - 1; i >= 0; i--) {
                 child = children[i];
-                if (child instanceof annie.DisplayObject && child._isOnStage){
+                if (child instanceof annie.DisplayObject && child._isOnStage) {
                     child._onRemoveEvent(isReSetMc);
                     child.stage = null;
                 }
             }
             super._onRemoveEvent(isReSetMc);
         }
-        public _onAddEvent():void{
+        public _onAddEvent(): void {
             let s = this;
             let child: any = null;
+            //这里用concat 隔离出一个新的children是非常重要的一步
             let children = s.children.concat();
-            let len =children.length;
+            let len = children.length;
             for (let i = len - 1; i >= 0; i--) {
                 child = children[i];
                 if (child instanceof annie.DisplayObject && !child._isOnStage) {
@@ -429,32 +456,20 @@ namespace annie {
             }
             super._onAddEvent();
         }
-        public _onEnterFrameEvent():void{
+
+        public _onUpdateFrame(mcSpeed: number = 1): void {
             let s = this;
+            let cMcSpeed = s.mcSpeed * mcSpeed;
+            super._onUpdateFrame(cMcSpeed);
             let child: any = null;
             let children = s.children.concat();
-            let len =children.length;
-            for (let i = len - 1; i >= 0; i--){
+            let len = children.length;
+            for (let i = len - 1; i >= 0; i--) {
                 child = children[i];
-                if (child instanceof annie.DisplayObject && child._isOnStage){
-                    child._onEnterFrameEvent();
+                if (child) {
+                    child._onUpdateFrame(cMcSpeed);
                 }
             }
-            super._onEnterFrameEvent();
         }
-        /**
-         * annie.Sprite显示容器的接受鼠标点击的区域。一但设置，容器里所有子级将不会触发任何鼠标相关的事件。
-         * 相当于 mouseChildren=false,但在有大量子级显示对象的情况下，此方法的性能搞出mouseChildren几个数量级，建议使用。
-         * @property hitArea
-         * @param {annie.Rectangle} rect
-         * @since 3.0.1
-         */
-        public set hitArea(rect:annie.Rectangle){
-            this._hitArea=rect;
-        }
-        public get hitArea():annie.Rectangle{
-            return this._hitArea;
-        }
-        private  _hitArea:annie.Rectangle=null;
     }
 }

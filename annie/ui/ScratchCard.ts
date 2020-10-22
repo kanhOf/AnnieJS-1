@@ -19,7 +19,7 @@ namespace annieUI {
          */
         /**
          * 构造函数
-         * 请监听 "onDrawTime"事件来判断刮完多少百分比了。
+         * 请监听 annie.Event.ON_DRAW_PERCENT事件来判断刮完多少百分比了。
          * @method ScratchCard
          * @param width 宽
          * @param height 高
@@ -43,7 +43,7 @@ namespace annieUI {
                         s._currentDraw++;
                         //抛事件
                         let per = Math.floor(s._currentDraw / s._totalDraw * 100);
-                        s.dispatchEvent("onDrawTime", {per: per});
+                        s.dispatchEvent("onDrawPercent", {per: per});
                     }
                 }
             })
@@ -55,20 +55,21 @@ namespace annieUI {
         /**
          * 重置刮刮卡
          * @method reset
-         * @param backColorObj 要更换的被刮出来的图片,不赋值的话默认之前设置的
+         * @param frontColorObj 没刮开之前的图，可以为单色，也可以为位图填充。赋值为""会用之前已设置的
+         * @param backColorObj 被刮开之后的图，可以为单色，也可以为位图填充。赋值为""会用之前已设置的
          * @since 1.1.1
          * @public
          */
-        public reset(backColorObj: any = ""): void {
-            super.reset(backColorObj);
+        public reset(frontColorObj: any="",backColorObj: any = ""): void {
+            super.reset(frontColorObj);
             let s = this;
             if (s._drawList) {
                 if (backColorObj != "") {
                     s.drawColor = backColorObj;
                 }
                 s._currentDraw = 0;
-                let dw: number = Math.floor(s._bounds.width / s._drawRadius);
-                let dh: number = Math.floor(s._bounds.height  / s._drawRadius);
+                let dw: number = Math.floor(s._bitmapData.width / s._drawRadius);
+                let dh: number = Math.floor(s._bitmapData.height  / s._drawRadius);
                 s._totalDraw = dw * dh;
                 for (let i = 0; i < dw; i++) {
                     s._drawList[i] = [];
@@ -95,8 +96,8 @@ namespace annieUI {
         public set drawRadius(value: number) {
             let s = this;
             s._drawRadius = value;
-            let dw: number = Math.floor(s._bounds.width / s._drawRadius);
-            let dh: number = Math.floor(s._bounds.height  / s._drawRadius);
+            let dw: number = Math.floor(s._bitmapData.width / s._drawRadius);
+            let dh: number = Math.floor(s._bitmapData.height  / s._drawRadius);
             s._totalDraw = dw * dh;
             for (let i = 0; i < dw; i++) {
                 s._drawList[i] = [];
